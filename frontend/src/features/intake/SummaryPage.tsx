@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { useParams } from "react-router-dom";
 import { z } from "zod";
 
+import { Logo } from "../../components/Logo";
 import { api } from "../../api/client";
 import type { Summary } from "../../api/types";
 import "./intake.css";
@@ -46,16 +47,29 @@ export function SummaryPage() {
     setSubmitted(true);
   };
 
-  if (isLoading) return <div className="wizard-state muted">Loading your summary…</div>;
+  if (isLoading)
+    return (
+      <div className="wizard-bg">
+        <div className="wizard-state muted">Loading your summary…</div>
+      </div>
+    );
   if (isError || !data)
-    return <div className="wizard-state error-text">We couldn&apos;t load your summary.</div>;
+    return (
+      <div className="wizard-bg">
+        <div className="wizard-state error-text">We couldn&apos;t load your summary.</div>
+      </div>
+    );
 
   const range = formatRange(data.estimate_min, data.estimate_max);
 
   return (
-    <div className="summary-page">
-      <div className="brand">AcciAssist</div>
-      <h1>Your case summary</h1>
+    <div className="wizard-bg">
+      <div className="summary-page">
+        <div className="summary-top">
+          <Logo size={40} withWordmark />
+        </div>
+        <h1>Your wellness summary</h1>
+        <p className="summary-lead">Here&apos;s what you shared with us.</p>
 
       <div className="card summary-card">
         <pre className="summary-body">{data.body}</pre>
@@ -98,12 +112,13 @@ export function SummaryPage() {
               <label>Phone (optional)</label>
               <input className="input" {...register("phone")} />
             </div>
-            <button className="btn btn-primary" type="submit" disabled={isSubmitting}>
+            <button className="btn btn-cta" type="submit" disabled={isSubmitting}>
               Work with us →
             </button>
           </form>
         </div>
       )}
+      </div>
     </div>
   );
 }

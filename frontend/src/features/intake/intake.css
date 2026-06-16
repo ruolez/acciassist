@@ -1,73 +1,13 @@
-/* ── Brand ── */
-.brand {
-  font-weight: 700;
-  font-size: 1.1rem;
-  color: var(--primary);
-  letter-spacing: -0.01em;
-}
+/* ────────────────────────────────────────────────────────────────
+   Patient wizard + summary — brand-aligned (navy / orange / gold)
+   ──────────────────────────────────────────────────────────────── */
 
-/* ── Landing ── */
-.landing {
-  max-width: 880px;
-  margin: 0 auto;
-  padding: var(--space-8) var(--space-5);
-}
-.landing-hero {
-  text-align: center;
-  margin-bottom: var(--space-8);
-}
-.landing-hero h1 {
-  font-size: 2.4rem;
-  margin: var(--space-5) 0 var(--space-4);
-}
-.landing-sub {
-  font-size: 1.1rem;
-  color: var(--text-secondary);
-  max-width: 620px;
-  margin: 0 auto;
-  line-height: 1.6;
-}
-.landing-types h2 {
-  text-align: center;
-  margin-bottom: var(--space-5);
-}
-.type-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: var(--space-4);
-}
-.type-card {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-2);
-  text-align: left;
-  padding: var(--space-5);
-  background: var(--surface);
-  border: 1px solid var(--outline);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-1);
-  cursor: pointer;
-  font-family: inherit;
-  transition: border-color 0.15s, box-shadow 0.15s, transform 0.1s;
-}
-.type-card:hover {
-  border-color: var(--primary);
-  box-shadow: var(--shadow-2);
-  transform: translateY(-2px);
-}
-.type-name {
-  font-size: 1.2rem;
-  font-weight: 600;
-}
-.type-desc {
-  color: var(--text-secondary);
-  font-size: 0.95rem;
-}
-.type-cta {
-  margin-top: var(--space-2);
-  color: var(--primary);
-  font-weight: 600;
+.wizard-bg {
+  min-height: 100vh;
+  background:
+    radial-gradient(100% 60% at 90% -10%, var(--orange-soft) 0%, transparent 50%),
+    radial-gradient(90% 60% at -10% 110%, var(--navy-soft) 0%, transparent 55%),
+    var(--surface);
 }
 
 /* ── Wizard (full-bleed) ── */
@@ -75,9 +15,9 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  max-width: 720px;
+  max-width: 760px;
   margin: 0 auto;
-  padding: var(--space-5);
+  padding: var(--space-5) var(--space-5) var(--space-8);
 }
 .wizard-state {
   min-height: 60vh;
@@ -91,24 +31,27 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  padding-top: var(--space-3);
 }
 .wizard-step {
+  font-family: var(--font-display);
   color: var(--text-secondary);
   font-variant-numeric: tabular-nums;
+  font-weight: 600;
   font-size: 0.9rem;
 }
 .progress {
-  height: 6px;
-  background: var(--outline);
-  border-radius: 999px;
-  margin: var(--space-4) 0 var(--space-8);
+  height: 8px;
+  background: var(--navy-soft);
+  border-radius: var(--radius-pill);
+  margin: var(--space-5) 0 var(--space-10);
   overflow: hidden;
 }
 .progress-fill {
   height: 100%;
-  background: var(--primary);
-  border-radius: 999px;
-  transition: width 0.3s ease;
+  background: linear-gradient(90deg, var(--orange) 0%, var(--gold) 100%);
+  border-radius: var(--radius-pill);
+  transition: width 0.45s cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 .wizard-body {
   flex: 1;
@@ -120,11 +63,16 @@
   margin-bottom: var(--space-6);
 }
 .wizard-prompt {
-  font-size: 1.8rem;
+  font-family: var(--font-display);
+  font-size: clamp(1.7rem, 3.6vw, 2.3rem);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
   margin-bottom: var(--space-3);
+  color: var(--on-surface);
 }
 .req {
-  color: var(--error);
+  color: var(--orange);
   margin-left: 4px;
 }
 .wizard-input {
@@ -134,7 +82,8 @@
 .wizard-nav {
   display: flex;
   justify-content: space-between;
-  padding-top: var(--space-6);
+  align-items: center;
+  padding-top: var(--space-8);
 }
 
 /* choices */
@@ -142,7 +91,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  margin-top: var(--space-4);
+  margin-top: var(--space-5);
 }
 .choice-list.yesno {
   flex-direction: row;
@@ -155,85 +104,116 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-4);
+  padding: var(--space-4) var(--space-5);
   font-size: 1.05rem;
+  font-weight: 500;
   text-align: left;
   background: var(--surface);
-  border: 2px solid var(--outline);
+  border: 1.5px solid var(--outline-strong);
   border-radius: var(--radius-sm);
   cursor: pointer;
   font-family: inherit;
-  transition: border-color 0.12s, background 0.12s;
+  color: var(--on-surface);
+  transition: border-color 0.14s, background 0.14s, transform 0.1s;
 }
 .choice:hover {
-  border-color: var(--primary);
+  border-color: var(--navy);
+  transform: translateY(-1px);
 }
 .choice.selected {
-  border-color: var(--primary);
-  background: var(--primary-light);
+  border-color: var(--navy);
+  background: var(--navy-soft);
 }
 .choice-dot,
 .choice-box {
-  width: 18px;
-  height: 18px;
-  border: 2px solid var(--outline);
+  width: 19px;
+  height: 19px;
+  border: 2px solid var(--outline-strong);
   flex: 0 0 auto;
+  transition: border-color 0.14s, background 0.14s;
 }
 .choice-dot {
   border-radius: 50%;
 }
 .choice-box {
-  border-radius: 4px;
+  border-radius: 5px;
 }
 .choice.selected .choice-dot,
 .choice.selected .choice-box {
-  border-color: var(--primary);
-  background: var(--primary);
-  box-shadow: inset 0 0 0 3px var(--surface);
+  border-color: var(--navy);
+  background: var(--navy);
+  box-shadow: inset 0 0 0 3.5px var(--surface);
 }
 
 /* ── Summary ── */
 .summary-page {
   max-width: 720px;
   margin: 0 auto;
-  padding: var(--space-8) var(--space-5);
+  padding: var(--space-8) var(--space-5) var(--space-10);
   display: flex;
   flex-direction: column;
   gap: var(--space-5);
 }
+.summary-top {
+  display: flex;
+  justify-content: center;
+  margin-bottom: var(--space-2);
+}
 .summary-page h1 {
-  font-size: 2rem;
+  font-size: clamp(2rem, 4vw, 2.6rem);
+  text-align: center;
+  letter-spacing: -0.03em;
+}
+.summary-lead {
+  text-align: center;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 1.15rem;
+  color: var(--text-secondary);
+  margin: calc(-1 * var(--space-3)) 0 var(--space-2);
 }
 .summary-card {
-  padding: var(--space-5);
+  padding: var(--space-6);
 }
 .summary-body {
   white-space: pre-wrap;
-  font-family: inherit;
-  font-size: 1.02rem;
-  line-height: 1.6;
+  font-family: var(--font-body);
+  font-size: 1.04rem;
+  line-height: 1.65;
   margin: 0;
+  color: var(--on-surface);
 }
-.estimate-card {
-  padding: var(--space-5);
+.card.estimate-card {
+  padding: var(--space-6);
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  border-left: 4px solid var(--primary);
+  background: var(--navy);
+  border: none;
+  color: #fff;
 }
 .estimate-label {
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--text-secondary);
+  letter-spacing: 0.12em;
+  color: var(--gold);
+  font-weight: 700;
 }
 .estimate-range {
-  font-size: 2rem;
-  font-weight: 700;
-  color: var(--primary);
+  font-family: var(--font-display);
+  font-size: clamp(2.2rem, 5vw, 3rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #fff;
+}
+.card.estimate-card .help-text {
+  color: rgba(255, 255, 255, 0.72);
 }
 .cta-card {
-  padding: var(--space-5);
+  padding: var(--space-6);
+}
+.cta-card h2 {
+  font-size: 1.5rem;
 }
 .lead-form {
   margin-top: var(--space-4);

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
+import { Logo } from "../../components/Logo";
 import { api } from "../../api/client";
 import type { AnswerValue, IntakeStart } from "../../api/types";
 import { QuestionRenderer } from "./QuestionRenderer";
@@ -54,17 +55,23 @@ export function IntakeWizard() {
 
   if (error) {
     return (
-      <div className="wizard-state">
-        <p className="error-text">{error}</p>
-        <button className="btn btn-outline" onClick={() => navigate("/")}>
-          ← Back to start
-        </button>
+      <div className="wizard-bg">
+        <div className="wizard-state">
+          <p className="error-text">{error}</p>
+          <button className="btn btn-outline" onClick={() => navigate("/")}>
+            ← Back to start
+          </button>
+        </div>
       </div>
     );
   }
 
   if (!start) {
-    return <div className="wizard-state muted">Loading…</div>;
+    return (
+      <div className="wizard-bg">
+        <div className="wizard-state muted">Loading…</div>
+      </div>
+    );
   }
 
   const page = start.pages[pageIndex];
@@ -102,13 +109,14 @@ export function IntakeWizard() {
   }
 
   return (
-    <div className="wizard">
-      <div className="wizard-top">
-        <div className="brand">AcciAssist</div>
-        <div className="wizard-step">
-          {pageIndex + 1} / {start.total_pages}
+    <div className="wizard-bg">
+      <div className="wizard">
+        <div className="wizard-top">
+          <Logo size={32} withWordmark />
+          <div className="wizard-step">
+            {pageIndex + 1} / {start.total_pages}
+          </div>
         </div>
-      </div>
       <div className="progress">
         <div
           className="progress-fill"
@@ -141,9 +149,10 @@ export function IntakeWizard() {
         >
           ← Back
         </button>
-        <button className="btn btn-primary" onClick={next} disabled={!canAdvance || busy}>
-          {isLast ? "See my summary" : "Next →"}
-        </button>
+          <button className="btn btn-cta" onClick={next} disabled={!canAdvance || busy}>
+            {isLast ? "See my summary" : "Next →"}
+          </button>
+        </div>
       </div>
     </div>
   );
