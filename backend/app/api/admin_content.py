@@ -45,7 +45,7 @@ async def _apply_order(db: DbSession, model, ordered_ids: list[int], **filters) 
         rows[item_id].display_order = index
 
 
-# ── Injury types ───────────────────────────────────────────────────────────────
+# ── Injury types ───────────────────────────────────────────────────────
 @router.get("/injury-types", response_model=list[InjuryTypeOut])
 async def list_injury_types(db: DbSession) -> list[InjuryType]:
     rows = await db.scalars(select(InjuryType).order_by(InjuryType.display_order))
@@ -94,7 +94,7 @@ async def reorder_injury_types(data: ReorderIn, db: DbSession) -> None:
     await db.commit()
 
 
-# ── Questions ─────────────────────────────────────────────────────────────────
+# ── Questions ──────────────────────────────────────────────────────────
 async def _load_question(db: DbSession, injury_type_id: int, question_id: int) -> Question:
     q = await db.scalar(
         select(Question)
@@ -199,7 +199,7 @@ async def reorder_questions(
     await db.commit()
 
 
-# ── Summary template ────────────────────────────────────────────────────────
+# ── Summary template ───────────────────────────────────────────────────
 async def _get_or_create_template(db: DbSession, injury_type_id: int) -> SummaryTemplate:
     tmpl = await db.scalar(
         select(SummaryTemplate).where(SummaryTemplate.injury_type_id == injury_type_id)

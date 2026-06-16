@@ -10,7 +10,7 @@ class ORMModel(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-# ── Auth / admins ────────────────────────────────────────────────
+# ── Auth / admins ──────────────────────────────────────────────────────
 class LoginIn(BaseModel):
     email: EmailStr
     password: str
@@ -28,7 +28,7 @@ class AdminCreateIn(BaseModel):
     password: str = Field(min_length=8)
 
 
-# ── Injury types ────────────────────────────────────────────
+# ── Injury types ───────────────────────────────────────────────────────
 class InjuryTypeIn(BaseModel):
     name: str = Field(min_length=1, max_length=200)
     description: str | None = None
@@ -48,7 +48,7 @@ class ReorderIn(BaseModel):
     ordered_ids: list[int]
 
 
-# ── Questions ──────────────────────────────────────────────
+# ── Questions ──────────────────────────────────────────────────────────
 class QuestionOptionIn(BaseModel):
     label: str = Field(min_length=1, max_length=255)
     value: str = Field(min_length=1, max_length=255)
@@ -84,7 +84,7 @@ class QuestionOut(ORMModel):
     options: list[QuestionOptionOut]
 
 
-# ── Summary template ────────────────────────────────────────
+# ── Summary template ───────────────────────────────────────────────────
 class SummaryTemplateIn(BaseModel):
     body: str = ""
     estimate_min: int | None = None
@@ -100,7 +100,7 @@ class SummaryTemplateOut(ORMModel):
     estimate_note: str
 
 
-# ── Public intake ─────────────────────────────────────────
+# ── Public intake ──────────────────────────────────────────────────────
 class IntakeStartIn(BaseModel):
     injury_type_id: int
 
@@ -135,7 +135,7 @@ class SummaryOut(BaseModel):
     estimate_note: str
 
 
-# ── Leads ─────────────────────────────────────────────────
+# ── Leads ──────────────────────────────────────────────────────────────
 class LeadIn(BaseModel):
     intake_session_id: uuid.UUID | None = None
     name: str = Field(min_length=1, max_length=200)
@@ -152,7 +152,7 @@ class LeadOut(ORMModel):
     created_at: datetime
 
 
-# ── Admin: submissions ───────────────────────────────────────
+# ── Admin: submissions ─────────────────────────────────────────────────
 class AnswerOut(ORMModel):
     question_id: int
     value: object
