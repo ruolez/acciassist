@@ -12,10 +12,11 @@ body,
 
 body {
   margin: 0;
-  font-family: var(--font);
+  font-family: var(--font-body);
   color: var(--on-surface);
   background: var(--background);
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 a {
@@ -26,8 +27,11 @@ a {
 h1,
 h2,
 h3 {
-  font-weight: 600;
-  line-height: 1.2;
+  font-family: var(--font-display);
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+  color: var(--on-surface);
 }
 
 /* Buttons */
@@ -38,15 +42,16 @@ h3 {
   gap: var(--space-2);
   padding: var(--space-3) var(--space-5);
   border: 1px solid transparent;
-  border-radius: var(--radius-sm);
-  font-size: 0.95rem;
+  border-radius: var(--radius-pill);
+  font-size: 0.97rem;
   font-weight: 600;
-  font-family: inherit;
+  font-family: var(--font-body);
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease,
+    transform 0.12s ease, box-shadow 0.18s ease;
 }
 .btn:disabled {
-  opacity: 0.5;
+  opacity: 0.45;
   cursor: not-allowed;
 }
 .btn-primary {
@@ -55,6 +60,21 @@ h3 {
 }
 .btn-primary:hover:not(:disabled) {
   background: var(--primary-hover);
+}
+/* Gold call-to-action — the brand's signature button. */
+.btn-cta {
+  background: var(--cta);
+  color: var(--cta-ink);
+  box-shadow: var(--shadow-cta);
+  padding: var(--space-4) var(--space-6);
+  font-weight: 700;
+}
+.btn-cta:hover:not(:disabled) {
+  background: var(--cta-hover);
+  transform: translateY(-2px);
+}
+.btn-cta:active:not(:disabled) {
+  transform: translateY(0);
 }
 .btn-ghost {
   background: transparent;
@@ -65,7 +85,7 @@ h3 {
 }
 .btn-outline {
   background: var(--surface);
-  border-color: var(--outline);
+  border-color: var(--outline-strong);
   color: var(--on-surface);
 }
 .btn-outline:hover:not(:disabled) {
@@ -93,20 +113,21 @@ h3 {
 .textarea,
 .select {
   width: 100%;
-  padding: var(--space-3);
-  border: 1px solid var(--outline);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--outline-strong);
   border-radius: var(--radius-sm);
   font-size: 1rem;
   font-family: inherit;
   background: var(--surface);
   color: var(--on-surface);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 .input:focus,
 .textarea:focus,
 .select:focus {
   outline: none;
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px var(--primary-light);
+  box-shadow: 0 0 0 4px var(--primary-light);
 }
 .textarea {
   min-height: 120px;
@@ -119,7 +140,7 @@ h3 {
 }
 .help-text {
   color: var(--text-secondary);
-  font-size: 0.9rem;
+  font-size: 0.92rem;
 }
 
 .card {
