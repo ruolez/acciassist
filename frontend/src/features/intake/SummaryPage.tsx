@@ -66,7 +66,7 @@ export function SummaryPage() {
     <div className="wizard-bg">
       <div className="summary-page">
         <div className="summary-top">
-          <Logo size={40} withWordmark />
+          <Logo size={40} withWordmark to="/" />
         </div>
         <h1>Your wellness summary</h1>
         <p className="summary-lead">Here&apos;s what you shared with us.</p>

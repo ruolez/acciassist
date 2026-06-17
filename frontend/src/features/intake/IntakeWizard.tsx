@@ -112,7 +112,7 @@ export function IntakeWizard() {
     <div className="wizard-bg">
       <div className="wizard">
         <div className="wizard-top">
-          <Logo size={32} withWordmark />
+          <Logo size={32} withWordmark to="/" />
           <div className="wizard-step">
             {pageIndex + 1} / {start.total_pages}
           </div>

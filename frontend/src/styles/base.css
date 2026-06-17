@@ -153,3 +153,13 @@ h3 {
 .muted {
   color: var(--text-secondary);
 }
+
+/* Clickable brand mark (Logo with `to`) */
+.logo-link {
+  text-decoration: none;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+.logo-link:hover {
+  opacity: 0.85;
+}

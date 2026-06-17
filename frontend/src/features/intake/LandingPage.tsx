@@ -84,7 +84,7 @@ export function LandingPage() {
   return (
     <div className="landing">
       <header className="topbar">
-        <Logo size={42} withWordmark />
+        <Logo size={42} withWordmark to="/" />
         <nav className="topbar-nav">
           <span className="topbar-tag">Patient Intake</span>
           <button className="btn btn-cta topbar-cta" onClick={scrollToBegin}>
@@ -219,7 +219,7 @@ export function LandingPage() {
       </section>
 
       <footer className="landing-foot">
-        <Logo size={28} withWordmark />
+        <Logo size={28} withWordmark to="/" />
         <span className="muted">
           Transparent, patient-first care. Your information stays private.
         </span>
