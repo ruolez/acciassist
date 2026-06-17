@@ -17,6 +17,7 @@ def _set_auth_cookie(response: Response, admin_id: int) -> None:
         create_access_token(str(admin_id)),
         httponly=True,
         samesite="lax",
+        secure=settings.cookie_secure,
         max_age=settings.jwt_expire_minutes * 60,
         path="/",
     )
@@ -38,7 +39,9 @@ async def login(data: LoginIn, response: Response, db: DbSession) -> AdminUser:
 
 @router.post("/logout")
 async def logout(response: Response) -> dict[str, bool]:
-    response.delete_cookie(ADMIN_COOKIE, path="/")
+    response.delete_cookie(
+        ADMIN_COOKIE, path="/", httponly=True, samesite="lax", secure=settings.cookie_secure
+    )
     return {"ok": True}
 
 

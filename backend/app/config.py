@@ -12,6 +12,10 @@ class Settings(BaseSettings):
     admin_email: str = "admin@acciassist.com"
     admin_password: str = "changeme123"
 
+    # Mark the admin session cookie Secure (send only over HTTPS). Enabled by
+    # the installer when SSL is configured; off in dev/HTTP.
+    cookie_secure: bool = False
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]

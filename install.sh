@@ -101,7 +101,7 @@ install_dependencies() {
 
 # ── Prompt for and write the .env ──────────────────────────────────────
 prompt_and_write_env() {
-  local use_ssl domain admin_email admin_pass admin_pass2 site_address public_url
+  local use_ssl domain admin_email admin_pass admin_pass2 site_address public_url cookie_secure
   echo
   read -rp "Enable HTTPS with Let's Encrypt (recommended for a domain)? [y/N] " use_ssl
   if [[ "$use_ssl" =~ ^[Yy] ]]; then
@@ -112,10 +112,12 @@ prompt_and_write_env() {
     done
     site_address="$domain"
     public_url="https://$domain"
+    cookie_secure="true"
     warn "Make sure DNS A record for '$domain' points to $(server_ip) before SSL can be issued."
   else
     site_address=":80"
     public_url="http://$(server_ip)"
+    cookie_secure="false"
   fi
 
   echo
@@ -145,6 +147,7 @@ JWT_EXPIRE_MINUTES=720
 CORS_ORIGINS=$public_url
 ADMIN_EMAIL=$admin_email
 ADMIN_PASSWORD=$admin_pass
+COOKIE_SECURE=$cookie_secure
 SITE_ADDRESS=$site_address
 VITE_API_BASE=/api
 EOF
