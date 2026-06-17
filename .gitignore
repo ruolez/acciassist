@@ -29,3 +29,7 @@ dist/
 
 # Postgres data (when bind-mounted)
 pgdata/
+
+# Deployment artifacts (created on the server by install.sh)
+backups/
+*.tsbuildinfo
