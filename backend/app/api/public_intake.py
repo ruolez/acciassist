@@ -1,7 +1,7 @@
 import uuid
 from datetime import UTC, date, datetime
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
@@ -28,6 +28,8 @@ from app.schemas import (
     QuestionOut,
     SummaryOut,
 )
+from app.services.leads import process_lead
+from app.services.notifications import notify_lead_received
 from app.services.pagination import build_pages
 from app.services.ratelimit import rate_limit
 from app.services.summary import answer_display_value, render_template
@@ -227,14 +229,11 @@ async def get_summary(session_id: uuid.UUID, db: DbSession) -> SummaryOut:
 @router.post(
     "/leads", response_model=LeadOut, status_code=201, dependencies=[Depends(_leads_limit)]
 )
-async def create_lead(data: LeadIn, db: DbSession) -> Lead:
-    lead = Lead(
-        intake_session_id=data.intake_session_id,
-        name=data.name,
-        email=data.email,
-        phone=data.phone,
-    )
-    db.add(lead)
-    await db.commit()
-    await db.refresh(lead)
+async def create_lead(
+    data: LeadIn, db: DbSession, background_tasks: BackgroundTasks
+) -> Lead:
+    lead, _, raw_claim_token = await process_lead(db, data)
+    # Email delivery happens after the response; a send failure is recorded in
+    # email_log and can never fail the lead capture itself.
+    background_tasks.add_task(notify_lead_received, lead.id, raw_claim_token)
     return lead
