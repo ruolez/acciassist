@@ -49,6 +49,22 @@ class ReorderIn(BaseModel):
     ordered_ids: list[int]
 
 
+class QuestionLayoutIn(BaseModel):
+    """Wizard page structure: each inner list is one page, in order."""
+
+    pages: list[list[int]]
+
+    @field_validator("pages")
+    @classmethod
+    def _no_empty_pages_or_duplicates(cls, pages: list[list[int]]) -> list[list[int]]:
+        flat = [qid for page in pages for qid in page]
+        if any(not page for page in pages):
+            raise ValueError("pages must not be empty")
+        if len(flat) != len(set(flat)):
+            raise ValueError("a question can only appear on one page")
+        return pages
+
+
 # ── Questions ──────────────────────────────────────────────────────────
 class QuestionOptionIn(BaseModel):
     label: str = Field(min_length=1, max_length=255)

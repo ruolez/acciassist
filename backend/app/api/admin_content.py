@@ -9,6 +9,7 @@ from app.schemas import (
     InjuryTypeIn,
     InjuryTypeOut,
     QuestionIn,
+    QuestionLayoutIn,
     QuestionOut,
     ReorderIn,
     SummaryTemplateIn,
@@ -159,6 +160,38 @@ async def create_question(
     return await _load_question(db, injury_type_id, question.id)
 
 
+# Registered before the {question_id} routes so the literal "layout" segment
+# isn't swallowed by the int path parameter.
+@router.put("/injury-types/{injury_type_id}/questions/layout", status_code=204)
+async def set_question_layout(
+    injury_type_id: int, data: QuestionLayoutIn, db: DbSession
+) -> None:
+    """Persist the wizard page structure: display_order follows the flattened
+    page list, and page_group encodes grouping the way build_pages expects —
+    single-question pages get None, multi-question pages get their page index
+    (adjacent pages therefore always differ, so runs never merge by accident).
+    """
+    await _get_injury_type(db, injury_type_id)
+    rows = {
+        row.id: row
+        for row in await db.scalars(
+            select(Question).where(Question.injury_type_id == injury_type_id)
+        )
+    }
+    flat = [qid for page in data.pages for qid in page]
+    if set(flat) != set(rows.keys()):
+        raise AppError(
+            400, "invalid_layout", "pages must contain exactly the existing question ids"
+        )
+    for index, qid in enumerate(flat):
+        rows[qid].display_order = index
+    for page_index, page in enumerate(data.pages):
+        group = page_index if len(page) > 1 else None
+        for qid in page:
+            rows[qid].page_group = group
+    await db.commit()
+
+
 @router.put(
     "/injury-types/{injury_type_id}/questions/{question_id}",
     response_model=QuestionOut,
@@ -197,6 +230,8 @@ async def reorder_questions(
     await _get_injury_type(db, injury_type_id)
     await _apply_order(db, Question, data.ordered_ids, injury_type_id=injury_type_id)
     await db.commit()
+
+
 
 
 # ── Summary template ───────────────────────────────────────────────────
