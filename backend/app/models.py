@@ -34,6 +34,31 @@ class IntakeStatus(str, enum.Enum):
     completed = "completed"
 
 
+class CaseStage(str, enum.Enum):
+    new = "new"
+    under_review = "under_review"
+    documents_needed = "documents_needed"
+    negotiating = "negotiating"
+    settled = "settled"
+    closed = "closed"
+
+
+class TokenPurpose(str, enum.Enum):
+    account_claim = "account_claim"
+    password_reset = "password_reset"
+
+
+class CaseUpdateKind(str, enum.Enum):
+    message = "message"
+    stage_change = "stage_change"
+
+
+class EmailStatus(str, enum.Enum):
+    sent = "sent"
+    failed = "failed"
+    skipped = "skipped"
+
+
 class AdminUser(Base):
     __tablename__ = "admin_users"
 
@@ -188,6 +213,139 @@ class Lead(Base):
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     email: Mapped[str] = mapped_column(String(255), nullable=False)
     phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    intake_session: Mapped["IntakeSession | None"] = relationship()
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    # NULL until the user claims their account by setting a password.
+    password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    claimed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    cases: Mapped[list["Case"]] = relationship(
+        back_populates="user", order_by="Case.created_at.desc()"
+    )
+
+
+class AuthToken(Base):
+    __tablename__ = "auth_tokens"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    # SHA-256 hex of the raw token; the raw value only ever appears in the
+    # emailed link, so a DB dump cannot be replayed.
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    purpose: Mapped[TokenPurpose] = mapped_column(
+        Enum(TokenPurpose, name="token_purpose"), nullable=False
+    )
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    user: Mapped["User"] = relationship()
+
+
+class Case(Base):
+    __tablename__ = "cases"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    lead_id: Mapped[int] = mapped_column(
+        ForeignKey("leads.id", ondelete="CASCADE"), unique=True, nullable=False
+    )
+    stage: Mapped[CaseStage] = mapped_column(
+        Enum(CaseStage, name="case_stage"), nullable=False, default=CaseStage.new
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+    user: Mapped["User"] = relationship(back_populates="cases")
+    lead: Mapped["Lead"] = relationship()
+    updates: Mapped[list["CaseUpdate"]] = relationship(
+        back_populates="case",
+        cascade="all, delete-orphan",
+        order_by="CaseUpdate.created_at",
+    )
+
+
+class CaseUpdate(Base):
+    __tablename__ = "case_updates"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    case_id: Mapped[int] = mapped_column(
+        ForeignKey("cases.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    admin_id: Mapped[int | None] = mapped_column(
+        ForeignKey("admin_users.id", ondelete="SET NULL"), nullable=True
+    )
+    kind: Mapped[CaseUpdateKind] = mapped_column(
+        Enum(CaseUpdateKind, name="case_update_kind"),
+        nullable=False,
+        default=CaseUpdateKind.message,
+    )
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    case: Mapped["Case"] = relationship(back_populates="updates")
+    admin: Mapped["AdminUser | None"] = relationship()
+
+
+class AppSettings(Base):
+    """Single-row (id=1) admin-editable settings; lazily created on first read."""
+
+    __tablename__ = "app_settings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    smtp_host: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    smtp_port: Mapped[int] = mapped_column(Integer, nullable=False, default=587)
+    smtp_username: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    smtp_password: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    smtp_tls_mode: Mapped[str] = mapped_column(String(20), nullable=False, default="starttls")
+    from_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    from_name: Mapped[str] = mapped_column(String(200), nullable=False, default="AcciAssist")
+    # Public origin used to build links in emails, e.g. "https://acciassist.com".
+    app_base_url: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+
+class EmailLog(Base):
+    __tablename__ = "email_log"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    to_email: Mapped[str] = mapped_column(String(255), nullable=False)
+    subject: Mapped[str] = mapped_column(String(255), nullable=False)
+    purpose: Mapped[str] = mapped_column(String(50), nullable=False)
+    status: Mapped[EmailStatus] = mapped_column(
+        Enum(EmailStatus, name="email_status"), nullable=False
+    )
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    case_id: Mapped[int | None] = mapped_column(
+        ForeignKey("cases.id", ondelete="SET NULL"), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
