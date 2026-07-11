@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 
-import type { Question, QuestionConfig, QuestionType } from "../../api/types";
+import type { AnswerValue, Question, QuestionConfig, QuestionType } from "../../api/types";
+import { QuestionRenderer } from "../intake/QuestionRenderer";
+import "../intake/intake.css";
 
 export type QuestionDraft = {
   type: QuestionType;
@@ -69,6 +71,7 @@ function slugifyValue(label: string): string {
 
 export function QuestionEditor({ initial, saving, onSave, onDelete }: Props) {
   const [draft, setDraft] = useState<QuestionDraft>(emptyDraft());
+  const [previewValue, setPreviewValue] = useState<AnswerValue>(null);
 
   useEffect(() => {
     if (initial) {
@@ -105,8 +108,31 @@ export function QuestionEditor({ initial, saving, onSave, onDelete }: Props) {
       return { ...d, config };
     });
 
+  useEffect(() => {
+    setPreviewValue(null);
+  }, [draft.type]);
+
   const isChoice = CHOICE_TYPES.includes(draft.type);
   const showPlaceholder = ["short_text", "long_text", "number"].includes(draft.type);
+
+  const previewOptions = draft.options.filter((o) => o.label.trim());
+  const previewQuestion: Question = {
+    id: -1,
+    slug: "preview",
+    display_order: 0,
+    page_group: null,
+    type: draft.type,
+    prompt: draft.prompt,
+    help_text: draft.help_text,
+    is_required: draft.is_required,
+    config: draft.config,
+    options: previewOptions.map((o, i) => ({
+      id: i + 1,
+      label: o.label,
+      value: o.value || slugifyValue(o.label),
+      display_order: i,
+    })),
+  };
 
   function handleSave() {
     const options = isChoice
@@ -268,6 +294,25 @@ export function QuestionEditor({ initial, saving, onSave, onDelete }: Props) {
         />
         Required
       </label>
+
+      <div className="editor-preview">
+        <span className="editor-preview-label">Preview — what the patient sees</span>
+        <h3 className="wizard-prompt">
+          {draft.prompt.trim() || "Your question…"}
+          {draft.is_required && <span className="req">*</span>}
+        </h3>
+        {draft.help_text && <p className="help-text">{draft.help_text}</p>}
+        {isChoice && previewOptions.length === 0 ? (
+          <p className="muted">Add at least one option to preview this question.</p>
+        ) : (
+          <QuestionRenderer
+            question={previewQuestion}
+            value={previewValue}
+            onChange={setPreviewValue}
+            autoFocus={false}
+          />
+        )}
+      </div>
 
       <div className="editor-actions">
         <button className="btn btn-primary" onClick={handleSave} disabled={!canSave || saving}>
