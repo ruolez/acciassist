@@ -15,7 +15,6 @@ from app.models import (
     Lead,
     Question,
     QuestionType,
-    SummaryTemplate,
 )
 from app.schemas import (
     AnswersIn,
@@ -32,7 +31,7 @@ from app.services.leads import process_lead
 from app.services.notifications import notify_lead_received
 from app.services.pagination import build_pages
 from app.services.ratelimit import rate_limit
-from app.services.summary import answer_display_value, render_template
+from app.services.summary import render_session_summary
 
 router = APIRouter()
 
@@ -177,39 +176,6 @@ async def save_answers(
     await db.commit()
 
 
-async def _render_summary(db: DbSession, session: IntakeSession) -> SummaryOut:
-    questions = await _questions_for(db, session.injury_type_id)
-    answers = {
-        a.question_id: a.value
-        for a in await db.scalars(
-            select(IntakeAnswer).where(IntakeAnswer.session_id == session.id)
-        )
-    }
-    values: dict[str, str] = {}
-    for q in questions:
-        labels = {o.value: o.label for o in q.options}
-        values[q.slug] = answer_display_value(q.type, answers.get(q.id), labels)
-
-    tmpl = await db.scalar(
-        select(SummaryTemplate).where(
-            SummaryTemplate.injury_type_id == session.injury_type_id
-        )
-    )
-    if tmpl is None:
-        return SummaryOut(
-            body="",
-            estimate_min=None,
-            estimate_max=None,
-            estimate_note="Upon closer inspection our experts will provide a better estimate.",
-        )
-    return SummaryOut(
-        body=render_template(tmpl.body, values),
-        estimate_min=tmpl.estimate_min,
-        estimate_max=tmpl.estimate_max,
-        estimate_note=tmpl.estimate_note,
-    )
-
-
 @router.post("/intake/{session_id}/complete", response_model=SummaryOut)
 async def complete_intake(session_id: uuid.UUID, db: DbSession) -> SummaryOut:
     session = await _active_session(db, session_id)
@@ -217,13 +183,13 @@ async def complete_intake(session_id: uuid.UUID, db: DbSession) -> SummaryOut:
         session.status = IntakeStatus.completed
         session.completed_at = datetime.now(UTC)
         await db.commit()
-    return await _render_summary(db, session)
+    return await render_session_summary(db, session)
 
 
 @router.get("/intake/{session_id}/summary", response_model=SummaryOut)
 async def get_summary(session_id: uuid.UUID, db: DbSession) -> SummaryOut:
     session = await _active_session(db, session_id)
-    return await _render_summary(db, session)
+    return await render_session_summary(db, session)
 
 
 @router.post(

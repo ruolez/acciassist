@@ -1,5 +1,12 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 
+import { AccountLayout } from "./features/account/AccountLayout";
+import { CaseDetailPage } from "./features/account/CaseDetailPage";
+import { ClaimAccountPage } from "./features/account/ClaimAccountPage";
+import { DashboardPage } from "./features/account/DashboardPage";
+import { ForgotPasswordPage } from "./features/account/ForgotPasswordPage";
+import { ResetPasswordPage } from "./features/account/ResetPasswordPage";
+import { UserLogin } from "./features/account/UserLogin";
 import { AdminLayout } from "./features/admin/AdminLayout";
 import { AdminLogin } from "./features/admin/AdminLogin";
 import { AdminsPage } from "./features/admin/AdminsPage";
@@ -19,6 +26,16 @@ export function App() {
       <Route path="/" element={<LandingPage />} />
       <Route path="/intake/:injuryTypeId" element={<IntakeWizard />} />
       <Route path="/intake/session/:sessionId/summary" element={<SummaryPage />} />
+
+      {/* Client accounts */}
+      <Route path="/login" element={<UserLogin />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route path="/account/claim" element={<ClaimAccountPage />} />
+      <Route path="/account" element={<AccountLayout />}>
+        <Route index element={<DashboardPage />} />
+        <Route path="cases/:caseId" element={<CaseDetailPage />} />
+      </Route>
 
       {/* Admin */}
       <Route path="/admin/login" element={<AdminLogin />} />

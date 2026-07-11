@@ -1,6 +1,11 @@
 import re
 
-from app.models import QuestionType
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+
+from app.models import IntakeAnswer, IntakeSession, Question, QuestionType, SummaryTemplate
+from app.schemas import SummaryOut
 
 # Matches {{ slug }} with optional surrounding whitespace.
 _TOKEN = re.compile(r"\{\{\s*([a-zA-Z0-9_-]+)\s*\}\}")
@@ -28,3 +33,40 @@ def answer_display_value(
 def render_template(body: str, values: dict[str, str]) -> str:
     """Replace ``{{ slug }}`` tokens in ``body`` with values; unknown slugs become empty."""
     return _TOKEN.sub(lambda m: values.get(m.group(1), ""), body)
+
+
+async def render_session_summary(db: AsyncSession, session: IntakeSession) -> SummaryOut:
+    """Render the intake session's summary template with its answers filled in."""
+    questions = await db.scalars(
+        select(Question)
+        .where(Question.injury_type_id == session.injury_type_id)
+        .order_by(Question.display_order)
+        .options(selectinload(Question.options))
+    )
+    answers = {
+        a.question_id: a.value
+        for a in await db.scalars(
+            select(IntakeAnswer).where(IntakeAnswer.session_id == session.id)
+        )
+    }
+    values: dict[str, str] = {}
+    for q in questions:
+        labels = {o.value: o.label for o in q.options}
+        values[q.slug] = answer_display_value(q.type, answers.get(q.id), labels)
+
+    tmpl = await db.scalar(
+        select(SummaryTemplate).where(SummaryTemplate.injury_type_id == session.injury_type_id)
+    )
+    if tmpl is None:
+        return SummaryOut(
+            body="",
+            estimate_min=None,
+            estimate_max=None,
+            estimate_note="Upon closer inspection our experts will provide a better estimate.",
+        )
+    return SummaryOut(
+        body=render_template(tmpl.body, values),
+        estimate_min=tmpl.estimate_min,
+        estimate_max=tmpl.estimate_max,
+        estimate_note=tmpl.estimate_note,
+    )
