@@ -527,3 +527,13 @@
   opacity: 0.3;
   cursor: default;
 }
+
+.token-button {
+  cursor: pointer;
+  border: 1px solid var(--outline-strong);
+  font-family: ui-monospace, monospace;
+}
+.token-button:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
