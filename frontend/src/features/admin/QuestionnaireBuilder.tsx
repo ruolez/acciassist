@@ -4,8 +4,9 @@ import { Link, useParams } from "react-router-dom";
 
 import { api } from "../../api/client";
 import type { Question } from "../../api/types";
+import { groupIntoPages } from "./page-layout";
+import { PageLayoutList } from "./PageLayoutList";
 import { QuestionEditor, type QuestionDraft } from "./QuestionEditor";
-import { SortableList } from "./SortableList";
 import { useActionError } from "./useActionError";
 import "./admin.css";
 
@@ -72,18 +73,18 @@ export function QuestionnaireBuilder() {
     onError: (e) => onError(e, "Could not delete the question"),
   });
 
-  const reorder = useMutation({
-    mutationFn: (orderedIds: number[]) =>
-      api(`/admin/injury-types/${injuryTypeId}/questions/reorder`, {
-        method: "POST",
-        body: { ordered_ids: orderedIds },
+  const layout = useMutation({
+    mutationFn: (pages: number[][]) =>
+      api(`/admin/injury-types/${injuryTypeId}/questions/layout`, {
+        method: "PUT",
+        body: { pages },
       }),
     onSuccess: () => {
       clear();
       invalidate();
     },
     onError: (e) => {
-      onError(e, "Could not reorder — the list was restored");
+      onError(e, "Could not save the page layout — it was restored");
       invalidate();
     },
   });
@@ -124,10 +125,10 @@ export function QuestionnaireBuilder() {
           {questions && questions.length === 0 && (
             <p className="muted builder-empty">No questions yet. Click “+ Add”.</p>
           )}
-          {questions && (
-            <SortableList
-              items={questions}
-              onReorder={(ids) => reorder.mutate(ids)}
+          {questions && questions.length > 0 && (
+            <PageLayoutList
+              pages={groupIntoPages(questions)}
+              onLayoutChange={(pages) => layout.mutate(pages)}
               renderItem={(q) => (
                 <button
                   className={`q-item ${selected === q.id ? "active" : ""}`}
