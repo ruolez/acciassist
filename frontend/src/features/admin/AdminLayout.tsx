@@ -8,8 +8,9 @@ import "./admin.css";
 const NAV = [
   { to: "/admin/injury-types", label: "Injury Types" },
   { to: "/admin/submissions", label: "Submissions" },
-  { to: "/admin/leads", label: "Leads" },
+  { to: "/admin/cases", label: "Cases" },
   { to: "/admin/admins", label: "Admins" },
+  { to: "/admin/settings", label: "Settings" },
 ];
 
 export function AdminLayout() {

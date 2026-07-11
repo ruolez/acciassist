@@ -10,9 +10,11 @@ import { UserLogin } from "./features/account/UserLogin";
 import { AdminLayout } from "./features/admin/AdminLayout";
 import { AdminLogin } from "./features/admin/AdminLogin";
 import { AdminsPage } from "./features/admin/AdminsPage";
+import { CaseDetailAdminPage } from "./features/admin/CaseDetailAdminPage";
+import { CasesPage } from "./features/admin/CasesPage";
 import { InjuryTypesPage } from "./features/admin/InjuryTypesPage";
-import { LeadsPage } from "./features/admin/LeadsPage";
 import { QuestionnaireBuilder } from "./features/admin/QuestionnaireBuilder";
+import { SettingsPage } from "./features/admin/SettingsPage";
 import { SubmissionsPage } from "./features/admin/SubmissionsPage";
 import { SummaryTemplatePage } from "./features/admin/SummaryTemplatePage";
 import { IntakeWizard } from "./features/intake/IntakeWizard";
@@ -45,8 +47,10 @@ export function App() {
         <Route path="injury-types/:id/questions" element={<QuestionnaireBuilder />} />
         <Route path="injury-types/:id/summary" element={<SummaryTemplatePage />} />
         <Route path="submissions" element={<SubmissionsPage />} />
-        <Route path="leads" element={<LeadsPage />} />
+        <Route path="cases" element={<CasesPage />} />
+        <Route path="cases/:caseId" element={<CaseDetailAdminPage />} />
         <Route path="admins" element={<AdminsPage />} />
+        <Route path="settings" element={<SettingsPage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

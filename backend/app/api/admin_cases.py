@@ -1,0 +1,161 @@
+from fastapi import APIRouter, BackgroundTasks
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
+
+from app.deps import CurrentAdmin, DbSession
+from app.errors import AppError
+from app.models import (
+    STAGE_LABELS,
+    Case,
+    CaseStage,
+    CaseUpdate,
+    CaseUpdateKind,
+    InjuryType,
+    IntakeSession,
+    TokenPurpose,
+)
+from app.schemas import (
+    AdminCaseDetailOut,
+    AdminCaseListOut,
+    AdminCaseUpdateOut,
+    CaseStageIn,
+    CaseUpdateIn,
+)
+from app.services.leads import issue_token
+from app.services.notifications import (
+    notify_case_update,
+    notify_lead_received,
+    notify_stage_changed,
+)
+
+router = APIRouter()
+
+
+async def _injury_type_name(db: DbSession, case: Case) -> str | None:
+    if case.lead.intake_session_id is None:
+        return None
+    return await db.scalar(
+        select(InjuryType.name)
+        .select_from(IntakeSession)
+        .join(InjuryType, InjuryType.id == IntakeSession.injury_type_id)
+        .where(IntakeSession.id == case.lead.intake_session_id)
+    )
+
+
+def _list_row(case: Case, injury_type_name: str | None) -> dict:
+    return {
+        "id": case.id,
+        "stage": case.stage,
+        "created_at": case.created_at,
+        "lead_name": case.lead.name,
+        "lead_email": case.lead.email,
+        "lead_phone": case.lead.phone,
+        "user_claimed": case.user.password_hash is not None,
+        "injury_type_name": injury_type_name,
+    }
+
+
+async def _load_case(db: DbSession, case_id: int, with_updates: bool = False) -> Case:
+    options = [selectinload(Case.lead), selectinload(Case.user)]
+    if with_updates:
+        options.append(selectinload(Case.updates).selectinload(CaseUpdate.admin))
+    case = await db.scalar(select(Case).where(Case.id == case_id).options(*options))
+    if case is None:
+        raise AppError(404, "not_found", "Case not found")
+    return case
+
+
+@router.get("/cases", response_model=list[AdminCaseListOut])
+async def list_cases(
+    db: DbSession, stage: CaseStage | None = None
+) -> list[AdminCaseListOut]:
+    query = (
+        select(Case)
+        .order_by(Case.created_at.desc())
+        .options(selectinload(Case.lead), selectinload(Case.user))
+    )
+    if stage is not None:
+        query = query.where(Case.stage == stage)
+    cases = await db.scalars(query)
+    return [
+        AdminCaseListOut(**_list_row(case, await _injury_type_name(db, case)))
+        for case in cases
+    ]
+
+
+@router.get("/cases/{case_id}", response_model=AdminCaseDetailOut)
+async def case_detail(case_id: int, db: DbSession) -> AdminCaseDetailOut:
+    case = await _load_case(db, case_id, with_updates=True)
+    return AdminCaseDetailOut(
+        **_list_row(case, await _injury_type_name(db, case)),
+        intake_session_id=case.lead.intake_session_id,
+        updates=[
+            AdminCaseUpdateOut(
+                id=u.id,
+                kind=u.kind,
+                body=u.body,
+                created_at=u.created_at,
+                admin_email=u.admin.email if u.admin else None,
+            )
+            for u in case.updates
+        ],
+    )
+
+
+@router.patch("/cases/{case_id}", response_model=AdminCaseDetailOut)
+async def change_stage(
+    case_id: int,
+    data: CaseStageIn,
+    admin: CurrentAdmin,
+    db: DbSession,
+    background_tasks: BackgroundTasks,
+) -> AdminCaseDetailOut:
+    case = await _load_case(db, case_id)
+    if data.stage != case.stage:
+        case.stage = data.stage
+        db.add(
+            CaseUpdate(
+                case_id=case.id,
+                admin_id=admin.id,
+                kind=CaseUpdateKind.stage_change,
+                body=f"Stage changed to {STAGE_LABELS[data.stage]}",
+            )
+        )
+        await db.commit()
+        background_tasks.add_task(notify_stage_changed, case.id)
+    return await case_detail(case_id, db)
+
+
+@router.post("/cases/{case_id}/updates", response_model=AdminCaseDetailOut, status_code=201)
+async def post_update(
+    case_id: int,
+    data: CaseUpdateIn,
+    admin: CurrentAdmin,
+    db: DbSession,
+    background_tasks: BackgroundTasks,
+) -> AdminCaseDetailOut:
+    case = await _load_case(db, case_id)
+    db.add(
+        CaseUpdate(
+            case_id=case.id,
+            admin_id=admin.id,
+            kind=CaseUpdateKind.message,
+            body=data.body,
+        )
+    )
+    await db.commit()
+    background_tasks.add_task(notify_case_update, case.id)
+    return await case_detail(case_id, db)
+
+
+@router.post("/cases/{case_id}/resend-invite")
+async def resend_invite(
+    case_id: int, db: DbSession, background_tasks: BackgroundTasks
+) -> dict[str, bool]:
+    case = await _load_case(db, case_id)
+    if case.user.password_hash is not None:
+        raise AppError(409, "already_claimed", "This client has already created an account")
+    raw = await issue_token(db, case.user_id, TokenPurpose.account_claim)
+    await db.commit()
+    background_tasks.add_task(notify_lead_received, case.lead_id, raw)
+    return {"ok": True}
