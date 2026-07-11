@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 
 from app.models import CaseStage, CaseUpdateKind, EmailStatus, IntakeStatus, QuestionType
 
@@ -62,13 +62,32 @@ class QuestionOptionOut(ORMModel):
     display_order: int
 
 
+class QuestionConfigIn(BaseModel):
+    """Typed per-question settings stored in the config JSONB column. Unknown
+    keys from older clients are dropped on write; existing rows keep whatever
+    they have until re-saved."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    placeholder: str | None = Field(default=None, max_length=255)
+    min: float | None = None
+    max: float | None = None
+    max_length: int | None = Field(default=None, ge=1, le=10_000)
+    disallow_future: bool | None = None
+
+    @model_validator(mode="after")
+    def _min_not_above_max(self) -> "QuestionConfigIn":
+        if self.min is not None and self.max is not None and self.min > self.max:
+            raise ValueError("min must not be greater than max")
+        return self
+
+
 class QuestionIn(BaseModel):
     type: QuestionType
     prompt: str = Field(min_length=1)
     help_text: str | None = None
     is_required: bool = True
-    page_group: int | None = None
-    config: dict = Field(default_factory=dict)
+    config: QuestionConfigIn = Field(default_factory=QuestionConfigIn)
     options: list[QuestionOptionIn] = Field(default_factory=list)
 
 

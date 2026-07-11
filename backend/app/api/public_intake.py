@@ -1,5 +1,5 @@
 import uuid
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 
 from fastapi import APIRouter, BackgroundTasks, Depends
 from sqlalchemy import select
@@ -39,19 +39,43 @@ _intake_start_limit = rate_limit("intake_start", limit=20, window_seconds=3600)
 _leads_limit = rate_limit("leads", limit=10, window_seconds=3600)
 
 
+def _config_number(config: dict, key: str) -> float | None:
+    """Read a numeric bound from config, ignoring legacy junk values."""
+    value = config.get(key)
+    if isinstance(value, bool) or not isinstance(value, int | float):
+        return None
+    return value
+
+
+def _text_cap(config: dict, type_cap: int) -> int:
+    max_length = config.get("max_length")
+    if isinstance(max_length, bool) or not isinstance(max_length, int) or max_length < 1:
+        return type_cap
+    return min(type_cap, max_length)
+
+
 def _validate_answer(question: Question, value: object) -> None:
-    """Enforce the JSON shape each question type expects; None means cleared."""
+    """Enforce the JSON shape each question type expects; None means cleared.
+    Admin-configured bounds (config JSONB) are read defensively — rows saved
+    before config was typed may hold arbitrary values."""
     if value is None:
         return
     error = AppError(
         422, "invalid_answer", f"Invalid answer for question '{question.slug}'"
     )
+    config = question.config or {}
     match question.type:
         case QuestionType.yes_no:
             if not isinstance(value, bool):
                 raise error
         case QuestionType.number:
             if isinstance(value, bool) or not isinstance(value, int | float):
+                raise error
+            minimum = _config_number(config, "min")
+            maximum = _config_number(config, "max")
+            if minimum is not None and value < minimum:
+                raise error
+            if maximum is not None and value > maximum:
                 raise error
         case QuestionType.single_choice:
             allowed = {o.value for o in question.options}
@@ -67,14 +91,19 @@ def _validate_answer(question: Question, value: object) -> None:
             if not isinstance(value, str):
                 raise error
             try:
-                date.fromisoformat(value)
+                parsed = date.fromisoformat(value)
             except ValueError:
                 raise error from None
+            # +1 day of grace: the patient's local "today" may be ahead of UTC.
+            if config.get("disallow_future") is True and parsed > date.today() + timedelta(
+                days=1
+            ):
+                raise error
         case QuestionType.short_text:
-            if not isinstance(value, str) or len(value) > 500:
+            if not isinstance(value, str) or len(value) > _text_cap(config, 500):
                 raise error
         case QuestionType.long_text:
-            if not isinstance(value, str) or len(value) > 10_000:
+            if not isinstance(value, str) or len(value) > _text_cap(config, 10_000):
                 raise error
 
 

@@ -148,8 +148,7 @@ async def create_question(
         prompt=data.prompt,
         help_text=data.help_text,
         is_required=data.is_required,
-        page_group=data.page_group,
-        config=data.config,
+        config=data.config.model_dump(exclude_none=True),
         display_order=await _next_order(
             db, Question, injury_type_id=injury_type_id
         ),
@@ -172,8 +171,9 @@ async def update_question(
     question.prompt = data.prompt
     question.help_text = data.help_text
     question.is_required = data.is_required
-    question.page_group = data.page_group
-    question.config = data.config
+    # page_group is deliberately not writable here — the layout endpoint owns it,
+    # so saving a question can never scramble the page structure.
+    question.config = data.config.model_dump(exclude_none=True)
     _replace_options(question, data.options)
     await db.commit()
     return await _load_question(db, injury_type_id, question_id)
