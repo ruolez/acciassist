@@ -6,7 +6,7 @@ import { useParams } from "react-router-dom";
 import { z } from "zod";
 
 import { Logo } from "../../components/Logo";
-import { api } from "../../api/client";
+import { api, ApiError } from "../../api/client";
 import type { Summary } from "../../api/types";
 import "./intake.css";
 
@@ -27,6 +27,7 @@ function formatRange(min: number | null, max: number | null): string | null {
 export function SummaryPage() {
   const { sessionId } = useParams();
   const [submitted, setSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const { data, isLoading, isError } = useQuery({
     queryKey: ["summary", sessionId],
     queryFn: () => api<Summary>(`/intake/${sessionId}/summary`),
@@ -40,11 +41,20 @@ export function SummaryPage() {
   } = useForm<LeadForm>({ resolver: zodResolver(leadSchema) });
 
   const onSubmit = async (values: LeadForm) => {
-    await api("/leads", {
-      method: "POST",
-      body: { intake_session_id: sessionId, ...values },
-    });
-    setSubmitted(true);
+    setSubmitError(null);
+    try {
+      await api("/leads", {
+        method: "POST",
+        body: { intake_session_id: sessionId, ...values },
+      });
+      setSubmitted(true);
+    } catch (e) {
+      setSubmitError(
+        e instanceof ApiError
+          ? e.message
+          : "We couldn't send your details. Please check your connection and try again.",
+      );
+    }
   };
 
   if (isLoading)
@@ -72,7 +82,7 @@ export function SummaryPage() {
         <p className="summary-lead">Here&apos;s what you shared with us.</p>
 
       <div className="card summary-card">
-        <pre className="summary-body">{data.body}</pre>
+        <div className="summary-body">{data.body}</div>
       </div>
 
       {range && (
@@ -114,8 +124,13 @@ export function SummaryPage() {
               <label>Phone (optional)</label>
               <input className="input" {...register("phone")} />
             </div>
+            {submitError && (
+              <p className="error-text" role="alert">
+                {submitError}
+              </p>
+            )}
             <button className="btn btn-cta" type="submit" disabled={isSubmitting}>
-              Work with us →
+              {submitError ? "Try again →" : "Work with us →"}
             </button>
           </form>
         </div>

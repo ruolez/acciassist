@@ -218,3 +218,43 @@
 .lead-form {
   margin-top: var(--space-4);
 }
+
+/* ── Phones ── */
+@media (max-width: 640px) {
+  .wizard {
+    padding: var(--space-4) var(--space-4) var(--space-6);
+  }
+  .progress {
+    margin: var(--space-4) 0 var(--space-6);
+  }
+  /* Top-align so the question doesn't jump when the keyboard opens. */
+  .wizard-body {
+    justify-content: flex-start;
+    padding-top: var(--space-4);
+  }
+  .wizard-nav {
+    padding-top: var(--space-6);
+    gap: var(--space-3);
+  }
+  .wizard-nav .btn {
+    min-height: 44px;
+  }
+  .wizard-nav .btn-cta {
+    flex: 1;
+  }
+  .choice {
+    min-height: 48px;
+    padding: var(--space-3) var(--space-4);
+  }
+  .summary-page {
+    padding: var(--space-6) var(--space-4) var(--space-8);
+  }
+  .summary-card,
+  .card.estimate-card,
+  .cta-card {
+    padding: var(--space-5) var(--space-4);
+  }
+  .lead-form .btn-cta {
+    width: 100%;
+  }
+}

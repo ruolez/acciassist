@@ -6,6 +6,7 @@ import { api } from "../../api/client";
 import type { Question } from "../../api/types";
 import { QuestionEditor, type QuestionDraft } from "./QuestionEditor";
 import { SortableList } from "./SortableList";
+import { useActionError } from "./useActionError";
 import "./admin.css";
 
 const TYPE_SHORT: Record<string, string> = {
@@ -23,6 +24,7 @@ export function QuestionnaireBuilder() {
   const injuryTypeId = Number(id);
   const queryClient = useQueryClient();
   const [selected, setSelected] = useState<number | "new" | null>(null);
+  const { error, onError, clear } = useActionError();
 
   const key = ["admin", "questions", injuryTypeId];
   const { data: questions } = useQuery({
@@ -40,8 +42,10 @@ export function QuestionnaireBuilder() {
       }),
     onSuccess: (q) => {
       setSelected(q.id);
+      clear();
       invalidate();
     },
+    onError: (e) => onError(e, "Could not create the question"),
   });
 
   const update = useMutation({
@@ -50,7 +54,11 @@ export function QuestionnaireBuilder() {
         method: "PUT",
         body: draft,
       }),
-    onSuccess: invalidate,
+    onSuccess: () => {
+      clear();
+      invalidate();
+    },
+    onError: (e) => onError(e, "Could not save the question"),
   });
 
   const remove = useMutation({
@@ -58,8 +66,10 @@ export function QuestionnaireBuilder() {
       api(`/admin/injury-types/${injuryTypeId}/questions/${qid}`, { method: "DELETE" }),
     onSuccess: () => {
       setSelected(null);
+      clear();
       invalidate();
     },
+    onError: (e) => onError(e, "Could not delete the question"),
   });
 
   const reorder = useMutation({
@@ -68,7 +78,14 @@ export function QuestionnaireBuilder() {
         method: "POST",
         body: { ordered_ids: orderedIds },
       }),
-    onSuccess: invalidate,
+    onSuccess: () => {
+      clear();
+      invalidate();
+    },
+    onError: (e) => {
+      onError(e, "Could not reorder — the list was restored");
+      invalidate();
+    },
   });
 
   const selectedQuestion =
@@ -94,6 +111,7 @@ export function QuestionnaireBuilder() {
           <h1>Questionnaire</h1>
         </div>
       </div>
+      {error && <p className="error-text">{error}</p>}
 
       <div className="builder">
         <div className="builder-list card">

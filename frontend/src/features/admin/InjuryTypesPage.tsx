@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import { api } from "../../api/client";
 import type { InjuryType } from "../../api/types";
 import { SortableList } from "./SortableList";
+import { useActionError } from "./useActionError";
 import "./admin.css";
 
 const KEY = ["admin", "injury-types"];
@@ -13,6 +14,7 @@ export function InjuryTypesPage() {
   const queryClient = useQueryClient();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const { error, onError, clear } = useActionError();
 
   const { data, isLoading } = useQuery({
     queryKey: KEY,
@@ -30,8 +32,10 @@ export function InjuryTypesPage() {
     onSuccess: () => {
       setName("");
       setDescription("");
+      clear();
       invalidate();
     },
+    onError: (e) => onError(e, "Could not create the injury type"),
   });
 
   const update = useMutation({
@@ -40,18 +44,33 @@ export function InjuryTypesPage() {
         method: "PUT",
         body: { name: it.name, description: it.description, is_published: it.is_published },
       }),
-    onSuccess: invalidate,
+    onSuccess: () => {
+      clear();
+      invalidate();
+    },
+    onError: (e) => onError(e, "Could not save the injury type"),
   });
 
   const remove = useMutation({
     mutationFn: (id: number) => api(`/admin/injury-types/${id}`, { method: "DELETE" }),
-    onSuccess: invalidate,
+    onSuccess: () => {
+      clear();
+      invalidate();
+    },
+    onError: (e) => onError(e, "Could not delete the injury type"),
   });
 
   const reorder = useMutation({
     mutationFn: (orderedIds: number[]) =>
       api("/admin/injury-types/reorder", { method: "POST", body: { ordered_ids: orderedIds } }),
-    onSuccess: invalidate,
+    onSuccess: () => {
+      clear();
+      invalidate();
+    },
+    onError: (e) => {
+      onError(e, "Could not reorder — the list was restored");
+      invalidate();
+    },
   });
 
   return (
@@ -59,6 +78,7 @@ export function InjuryTypesPage() {
       <div className="page-head">
         <h1>Injury Types</h1>
       </div>
+      {error && <p className="error-text">{error}</p>}
 
       <form
         className="card inline-form"

@@ -6,6 +6,18 @@
 {$SITE_ADDRESS} {
 	encode zstd gzip
 
+	header {
+		# Ignored by browsers over plain HTTP, effective once SSL is on.
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		# 'unsafe-inline' styles: React style attributes (e.g. the wizard
+		# progress bar); fonts come from Google Fonts.
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+		-Server
+	}
+
 	# JSON API -> FastAPI. Routes are mounted under /api, so forward the
 	# prefix unchanged (do NOT strip it).
 	@api path /api/*

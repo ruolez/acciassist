@@ -4,6 +4,7 @@ import { Link, useParams } from "react-router-dom";
 
 import { api } from "../../api/client";
 import type { Question, SummaryTemplate } from "../../api/types";
+import { useActionError } from "./useActionError";
 import "./admin.css";
 
 export function SummaryTemplatePage() {
@@ -27,6 +28,7 @@ export function SummaryTemplatePage() {
   const [max, setMax] = useState<string>("");
   const [note, setNote] = useState("");
   const [saved, setSaved] = useState(false);
+  const { error, onError, clear } = useActionError();
 
   useEffect(() => {
     if (data) {
@@ -50,9 +52,11 @@ export function SummaryTemplatePage() {
       }),
     onSuccess: () => {
       setSaved(true);
+      clear();
       queryClient.invalidateQueries({ queryKey: key });
       setTimeout(() => setSaved(false), 2000);
     },
+    onError: (e) => onError(e, "Could not save the template"),
   });
 
   return (
@@ -68,6 +72,7 @@ export function SummaryTemplatePage() {
           {saved ? "Saved ✓" : "Save"}
         </button>
       </div>
+      {error && <p className="error-text">{error}</p>}
 
       <div className="card editor">
         <div className="field">
