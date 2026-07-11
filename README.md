@@ -6,8 +6,13 @@ estimated settlement range, and can leave their details to work with the company
 Admins configure the entire experience: injury types, questionnaires, and summary
 templates.
 
-This is **Slice 1** (the vertical spine): infrastructure + admin builder + patient
-intake. See `~/.claude/plans/i-want-to-create-snazzy-rocket.md` for scope and roadmap.
+**Slice 1:** infrastructure + admin builder + patient intake.
+**Slice 2 (current):** client accounts & case portal — capturing a lead now creates a
+user + case, emails a single-use account-claim link (SMTP configured in Admin →
+Settings, including the public site URL used in email links), and clients follow their
+case through a six-stage pipeline (new → under review → documents needed → negotiating
+→ settled → closed) with an admin-posted updates feed; stage changes and updates
+notify the client by email.
 
 ## Stack
 
@@ -75,11 +80,23 @@ docker compose run --rm backend alembic upgrade head
 - `backend/app/` — `models.py`, `schemas.py`, `api/` (routers), `services/` (pure logic),
   `security.py`, `deps.py`, `errors.py`, `seed.py`
 - `frontend/src/features/intake/` — public patient flow (landing, full-bleed wizard, summary)
+- `frontend/src/features/account/` — client portal (claim/login/reset, dashboard, case
+  detail with stage tracker)
 - `frontend/src/features/admin/` — admin (login, two-pane questionnaire builder, summary
-  template, submissions, leads, admins)
+  template, submissions, cases, admins, settings)
 - `nginx/nginx.conf` — reverse proxy (dev)
+
+## Email (dev)
+
+Run a local SMTP catcher and point Admin → Settings at it:
+
+```bash
+docker run -d --name maildev -p 1080:1080 -p 1025:1025 maildev/maildev
+# Settings: host host.docker.internal, port 1025, encryption none
+# Inbox UI: http://localhost:1080
+```
 
 ## Deferred to later slices
 
-Patient accounts & dashboard · payout rules engine · admin theming · doctor/insurance/
-attorney portals · Redis & horizontal scaling.
+Payout rules engine · admin theming · doctor/insurance/attorney portals · CI ·
+observability · Redis & horizontal scaling.

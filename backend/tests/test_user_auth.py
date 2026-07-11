@@ -1,7 +1,7 @@
 import re
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import select, update
+from sqlalchemy import update
 
 from app.models import AuthToken
 from tests.conftest import USER_EMAIL, USER_PASSWORD, claim_token_from, seed_smtp_settings
