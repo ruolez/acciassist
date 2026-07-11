@@ -17,6 +17,25 @@ from app.security import hash_password
 def _disable_rate_limits(monkeypatch):
     monkeypatch.setattr(settings, "rate_limit_enabled", False)
 
+
+@pytest.fixture
+def sent_emails(monkeypatch):
+    """Capture outgoing SMTP messages instead of hitting the network."""
+    sent: list[tuple[dict, object]] = []
+
+    def _capture(snapshot: dict, msg: object) -> None:
+        sent.append((snapshot, msg))
+
+    monkeypatch.setattr("app.services.email._send_via_smtp", _capture)
+    return sent
+
+
+@pytest.fixture(autouse=True)
+def _email_uses_test_db(session_factory, monkeypatch):
+    """Background notification tasks open their own session — point it at the
+    test database instead of the dev one."""
+    monkeypatch.setattr("app.services.email.get_session_factory", lambda: session_factory)
+
 _base_url, _ = settings.database_url.rsplit("/", 1)
 TEST_DB = "acciassist_test"
 TEST_URL = f"{_base_url}/{TEST_DB}"

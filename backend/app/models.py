@@ -43,6 +43,16 @@ class CaseStage(str, enum.Enum):
     closed = "closed"
 
 
+STAGE_LABELS: dict[CaseStage, str] = {
+    CaseStage.new: "New",
+    CaseStage.under_review: "Under review",
+    CaseStage.documents_needed: "Documents needed",
+    CaseStage.negotiating: "Negotiating",
+    CaseStage.settled: "Settled",
+    CaseStage.closed: "Closed",
+}
+
+
 class TokenPurpose(str, enum.Enum):
     account_claim = "account_claim"
     password_reset = "password_reset"

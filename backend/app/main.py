@@ -5,6 +5,7 @@ from app.api import (
     admin_admins,
     admin_auth,
     admin_content,
+    admin_settings,
     admin_submissions,
     health,
     public_intake,
@@ -40,5 +41,11 @@ app.include_router(
     admin_submissions.router,
     prefix="/api/admin",
     tags=["admin-submissions"],
+    dependencies=_admin_auth,
+)
+app.include_router(
+    admin_settings.router,
+    prefix="/api/admin/settings",
+    tags=["admin-settings"],
     dependencies=_admin_auth,
 )
