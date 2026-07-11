@@ -25,7 +25,14 @@ export function QuestionnaireBuilder() {
   const injuryTypeId = Number(id);
   const queryClient = useQueryClient();
   const [selected, setSelected] = useState<number | "new" | null>(null);
+  const [editorDirty, setEditorDirty] = useState(false);
   const { error, onError, clear } = useActionError();
+
+  const selectGuarded = (next: number | "new" | null) => {
+    if (next === selected) return;
+    if (editorDirty && !confirm("Discard unsaved changes to this question?")) return;
+    setSelected(next);
+  };
 
   const key = ["admin", "questions", injuryTypeId];
   const { data: questions } = useQuery({
@@ -102,6 +109,20 @@ export function QuestionnaireBuilder() {
     }
   };
 
+  const handleDuplicate = () => {
+    if (!selectedQuestion) return;
+    const { placeholder, min, max, max_length, disallow_future } =
+      selectedQuestion.config ?? {};
+    create.mutate({
+      type: selectedQuestion.type,
+      prompt: `${selectedQuestion.prompt} (copy)`,
+      help_text: selectedQuestion.help_text,
+      is_required: selectedQuestion.is_required,
+      config: { placeholder, min, max, max_length, disallow_future },
+      options: selectedQuestion.options.map((o) => ({ label: o.label, value: o.value })),
+    });
+  };
+
   return (
     <div className="page">
       <div className="page-head">
@@ -118,7 +139,7 @@ export function QuestionnaireBuilder() {
         <div className="builder-list card">
           <div className="builder-list-head">
             <span>Questions</span>
-            <button className="btn btn-outline" onClick={() => setSelected("new")}>
+            <button className="btn btn-outline" onClick={() => selectGuarded("new")}>
               + Add
             </button>
           </div>
@@ -132,7 +153,7 @@ export function QuestionnaireBuilder() {
               renderItem={(q) => (
                 <button
                   className={`q-item ${selected === q.id ? "active" : ""}`}
-                  onClick={() => setSelected(q.id)}
+                  onClick={() => selectGuarded(q.id)}
                 >
                   <span className="q-prompt">{q.prompt || "(untitled)"}</span>
                   <span className="q-type">{TYPE_SHORT[q.type]}</span>
@@ -154,6 +175,8 @@ export function QuestionnaireBuilder() {
               onDelete={
                 typeof selected === "number" ? () => remove.mutate(selected) : undefined
               }
+              onDuplicate={typeof selected === "number" ? handleDuplicate : undefined}
+              onDirtyChange={setEditorDirty}
             />
           )}
         </div>

@@ -40,7 +40,21 @@ type Props = {
   saving: boolean;
   onSave: (draft: QuestionDraft) => void;
   onDelete?: () => void;
+  onDuplicate?: () => void;
+  onDirtyChange?: (dirty: boolean) => void;
 };
+
+function draftFrom(initial: Question | null): QuestionDraft {
+  if (!initial) return emptyDraft();
+  return {
+    type: initial.type,
+    prompt: initial.prompt,
+    help_text: initial.help_text,
+    is_required: initial.is_required,
+    config: initial.config ?? {},
+    options: initial.options.map((o) => ({ label: o.label, value: o.value })),
+  };
+}
 
 const TYPE_LABELS: Record<QuestionType, string> = {
   single_choice: "Single choice",
@@ -69,24 +83,33 @@ function slugifyValue(label: string): string {
   return label.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
 }
 
-export function QuestionEditor({ initial, saving, onSave, onDelete }: Props) {
+export function QuestionEditor({
+  initial,
+  saving,
+  onSave,
+  onDelete,
+  onDuplicate,
+  onDirtyChange,
+}: Props) {
   const [draft, setDraft] = useState<QuestionDraft>(emptyDraft());
   const [previewValue, setPreviewValue] = useState<AnswerValue>(null);
 
   useEffect(() => {
-    if (initial) {
-      setDraft({
-        type: initial.type,
-        prompt: initial.prompt,
-        help_text: initial.help_text,
-        is_required: initial.is_required,
-        config: initial.config ?? {},
-        options: initial.options.map((o) => ({ label: o.label, value: o.value })),
-      });
-    } else {
-      setDraft(emptyDraft());
-    }
+    setDraft(draftFrom(initial));
   }, [initial]);
+
+  const dirty = JSON.stringify(draft) !== JSON.stringify(draftFrom(initial));
+
+  useEffect(() => {
+    onDirtyChange?.(dirty);
+  }, [dirty, onDirtyChange]);
+
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
 
   const set = <K extends keyof QuestionDraft>(key: K, value: QuestionDraft[K]) =>
     setDraft((d) => ({ ...d, [key]: value }));
@@ -268,6 +291,32 @@ export function QuestionEditor({ initial, saving, onSave, onDelete }: Props) {
                 }}
               />
               <button
+                className="btn btn-ghost option-move"
+                type="button"
+                aria-label="Move option up"
+                disabled={idx === 0}
+                onClick={() => {
+                  const options = [...draft.options];
+                  [options[idx - 1], options[idx]] = [options[idx], options[idx - 1]];
+                  set("options", options);
+                }}
+              >
+                ↑
+              </button>
+              <button
+                className="btn btn-ghost option-move"
+                type="button"
+                aria-label="Move option down"
+                disabled={idx === draft.options.length - 1}
+                onClick={() => {
+                  const options = [...draft.options];
+                  [options[idx], options[idx + 1]] = [options[idx + 1], options[idx]];
+                  set("options", options);
+                }}
+              >
+                ↓
+              </button>
+              <button
                 className="btn btn-danger"
                 type="button"
                 onClick={() => set("options", draft.options.filter((_, i) => i !== idx))}
@@ -318,6 +367,11 @@ export function QuestionEditor({ initial, saving, onSave, onDelete }: Props) {
         <button className="btn btn-primary" onClick={handleSave} disabled={!canSave || saving}>
           {initial ? "Save changes" : "Add question"}
         </button>
+        {onDuplicate && initial && (
+          <button className="btn btn-outline" onClick={onDuplicate} disabled={saving}>
+            Duplicate
+          </button>
+        )}
         {onDelete && initial && (
           <button
             className="btn btn-danger"

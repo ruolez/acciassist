@@ -518,3 +518,12 @@
 .page-merge {
   margin-top: var(--space-2);
 }
+
+.option-move {
+  padding: var(--space-2);
+  min-width: 32px;
+}
+.option-move:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
