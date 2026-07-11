@@ -38,7 +38,13 @@ def register_error_handlers(app: FastAPI) -> None:
     async def _handle_validation_error(
         _: Request, exc: RequestValidationError
     ) -> JSONResponse:
+        # ctx can hold raw exception objects (not JSON-serializable) and input
+        # can echo arbitrarily large payloads — keep only loc/msg/type.
+        details = [
+            {"loc": list(e.get("loc", ())), "msg": e.get("msg"), "type": e.get("type")}
+            for e in exc.errors()
+        ]
         return JSONResponse(
             status_code=422,
-            content=_envelope("validation_error", "Invalid request", exc.errors()),
+            content=_envelope("validation_error", "Invalid request", details),
         )

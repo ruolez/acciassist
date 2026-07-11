@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Response
+from fastapi import APIRouter, Depends, Response
 from sqlalchemy import select
 
 from app.config import settings
@@ -7,8 +7,11 @@ from app.errors import AppError
 from app.models import AdminUser
 from app.schemas import AdminOut, LoginIn
 from app.security import create_access_token, verify_password
+from app.services.ratelimit import rate_limit
 
 router = APIRouter()
+
+_login_limit = rate_limit("admin_login", limit=5, window_seconds=60)
 
 
 def _set_auth_cookie(response: Response, admin_id: int) -> None:
@@ -23,7 +26,7 @@ def _set_auth_cookie(response: Response, admin_id: int) -> None:
     )
 
 
-@router.post("/login", response_model=AdminOut)
+@router.post("/login", response_model=AdminOut, dependencies=[Depends(_login_limit)])
 async def login(data: LoginIn, response: Response, db: DbSession) -> AdminUser:
     admin = await db.scalar(select(AdminUser).where(AdminUser.email == data.email))
     valid = (

@@ -1,7 +1,7 @@
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
@@ -14,6 +14,7 @@ from app.models import (
     IntakeStatus,
     Lead,
     Question,
+    QuestionType,
     SummaryTemplate,
 )
 from app.schemas import (
@@ -28,9 +29,52 @@ from app.schemas import (
     SummaryOut,
 )
 from app.services.pagination import build_pages
+from app.services.ratelimit import rate_limit
 from app.services.summary import answer_display_value, render_template
 
 router = APIRouter()
+
+_intake_start_limit = rate_limit("intake_start", limit=20, window_seconds=3600)
+_leads_limit = rate_limit("leads", limit=10, window_seconds=3600)
+
+
+def _validate_answer(question: Question, value: object) -> None:
+    """Enforce the JSON shape each question type expects; None means cleared."""
+    if value is None:
+        return
+    error = AppError(
+        422, "invalid_answer", f"Invalid answer for question '{question.slug}'"
+    )
+    match question.type:
+        case QuestionType.yes_no:
+            if not isinstance(value, bool):
+                raise error
+        case QuestionType.number:
+            if isinstance(value, bool) or not isinstance(value, int | float):
+                raise error
+        case QuestionType.single_choice:
+            allowed = {o.value for o in question.options}
+            if not isinstance(value, str) or value not in allowed:
+                raise error
+        case QuestionType.multi_choice:
+            allowed = {o.value for o in question.options}
+            if not isinstance(value, list) or not all(
+                isinstance(v, str) and v in allowed for v in value
+            ):
+                raise error
+        case QuestionType.date:
+            if not isinstance(value, str):
+                raise error
+            try:
+                date.fromisoformat(value)
+            except ValueError:
+                raise error from None
+        case QuestionType.short_text:
+            if not isinstance(value, str) or len(value) > 500:
+                raise error
+        case QuestionType.long_text:
+            if not isinstance(value, str) or len(value) > 10_000:
+                raise error
 
 
 async def _published_injury_type(db: DbSession, injury_type_id: int) -> InjuryType:
@@ -71,7 +115,9 @@ async def public_injury_types(db: DbSession) -> list[InjuryType]:
     return list(rows)
 
 
-@router.post("/intake/start", response_model=IntakeStartOut)
+@router.post(
+    "/intake/start", response_model=IntakeStartOut, dependencies=[Depends(_intake_start_limit)]
+)
 async def start_intake(data: IntakeStartIn, db: DbSession) -> IntakeStartOut:
     injury_type = await _published_injury_type(db, data.injury_type_id)
     session = IntakeSession(injury_type_id=injury_type.id)
@@ -102,6 +148,7 @@ async def save_answers(
     session = await _active_session(db, session_id)
     if session.status == IntakeStatus.completed:
         raise AppError(409, "already_completed", "This intake has already been submitted")
+    questions = {q.id: q for q in await _questions_for(db, session.injury_type_id)}
     existing = {
         a.question_id: a
         for a in await db.scalars(
@@ -109,6 +156,12 @@ async def save_answers(
         )
     }
     for answer in data.answers:
+        question = questions.get(answer.question_id)
+        if question is None:
+            raise AppError(
+                422, "invalid_answer", "Answer references a question outside this intake"
+            )
+        _validate_answer(question, answer.value)
         if answer.question_id in existing:
             existing[answer.question_id].value = answer.value
         else:
@@ -171,7 +224,9 @@ async def get_summary(session_id: uuid.UUID, db: DbSession) -> SummaryOut:
     return await _render_summary(db, session)
 
 
-@router.post("/leads", response_model=LeadOut, status_code=201)
+@router.post(
+    "/leads", response_model=LeadOut, status_code=201, dependencies=[Depends(_leads_limit)]
+)
 async def create_lead(data: LeadIn, db: DbSession) -> Lead:
     lead = Lead(
         intake_session_id=data.intake_session_id,

@@ -1,3 +1,4 @@
+import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
@@ -10,6 +11,11 @@ from app.db import Base, get_db
 from app.main import app
 from app.models import AdminUser
 from app.security import hash_password
+
+
+@pytest.fixture(autouse=True)
+def _disable_rate_limits(monkeypatch):
+    monkeypatch.setattr(settings, "rate_limit_enabled", False)
 
 _base_url, _ = settings.database_url.rsplit("/", 1)
 TEST_DB = "acciassist_test"

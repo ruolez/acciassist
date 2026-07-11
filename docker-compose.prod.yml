@@ -20,6 +20,7 @@ services:
   backend:
     build: ./backend
     environment:
+      APP_ENV: production
       DATABASE_URL: ${DATABASE_URL}
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRE_MINUTES: ${JWT_EXPIRE_MINUTES}

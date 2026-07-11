@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 from app.models import IntakeStatus, QuestionType
 
@@ -121,11 +121,25 @@ class IntakeStartOut(BaseModel):
 
 class AnswerIn(BaseModel):
     question_id: int
-    value: object
+    value: bool | int | float | str | list[str] | None
+
+    @field_validator("value")
+    @classmethod
+    def _cap_value_size(
+        cls, v: bool | int | float | str | list[str] | None
+    ) -> bool | int | float | str | list[str] | None:
+        if isinstance(v, str) and len(v) > 10_000:
+            raise ValueError("answer text is too long")
+        if isinstance(v, list):
+            if len(v) > 50:
+                raise ValueError("too many selected options")
+            if any(len(item) > 255 for item in v):
+                raise ValueError("selected option value is too long")
+        return v
 
 
 class AnswersIn(BaseModel):
-    answers: list[AnswerIn]
+    answers: list[AnswerIn] = Field(max_length=100)
 
 
 class SummaryOut(BaseModel):
