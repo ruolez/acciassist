@@ -93,3 +93,83 @@ export type IntakeSessionDetail = IntakeSessionSummary & {
 
 /** Answer value as held in the wizard before submission. */
 export type AnswerValue = string | number | boolean | string[] | null;
+
+export type User = {
+  id: number;
+  email: string;
+  name: string;
+  phone: string | null;
+  created_at: string;
+};
+
+export type CaseStage =
+  | "new"
+  | "under_review"
+  | "documents_needed"
+  | "negotiating"
+  | "settled"
+  | "closed";
+
+export type CaseUpdate = {
+  id: number;
+  kind: "message" | "stage_change";
+  body: string;
+  created_at: string;
+};
+
+export type CaseListItem = {
+  id: number;
+  stage: CaseStage;
+  created_at: string;
+  injury_type_name: string | null;
+  estimate_min: number | null;
+  estimate_max: number | null;
+};
+
+export type CaseDetail = CaseListItem & {
+  updates: CaseUpdate[];
+  summary: Summary | null;
+  name: string;
+  email: string;
+  phone: string | null;
+};
+
+export type AdminCaseUpdate = CaseUpdate & { admin_email: string | null };
+
+export type AdminCaseListItem = {
+  id: number;
+  stage: CaseStage;
+  created_at: string;
+  lead_name: string;
+  lead_email: string;
+  lead_phone: string | null;
+  user_claimed: boolean;
+  injury_type_name: string | null;
+};
+
+export type AdminCaseDetail = AdminCaseListItem & {
+  intake_session_id: string | null;
+  updates: AdminCaseUpdate[];
+};
+
+export type AppSettings = {
+  smtp_host: string | null;
+  smtp_port: number;
+  smtp_username: string | null;
+  smtp_password_set: boolean;
+  smtp_tls_mode: "none" | "starttls" | "ssl";
+  from_email: string | null;
+  from_name: string;
+  app_base_url: string | null;
+};
+
+export type EmailLogEntry = {
+  id: number;
+  to_email: string;
+  subject: string;
+  purpose: string;
+  status: "sent" | "failed" | "skipped";
+  error: string | null;
+  case_id: number | null;
+  created_at: string;
+};

@@ -87,7 +87,9 @@ export function SummaryPage() {
         <div className="card cta-card">
           <h2>Thank you!</h2>
           <p className="muted">
-            One of our specialists will reach out shortly to help you move forward.
+            Check your inbox — we&apos;ve emailed your case details and a link to create
+            your account, where you can follow your case&apos;s progress. One of our
+            specialists will reach out shortly.
           </p>
         </div>
       ) : (

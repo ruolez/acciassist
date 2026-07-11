@@ -1,0 +1,318 @@
+/* ── Client portal (account) ─────────────────────────────────────────── */
+
+/* Auth pages (login / claim / forgot / reset) */
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-5);
+  padding: var(--space-6) var(--space-4);
+  background:
+    radial-gradient(1200px 500px at 50% -10%, var(--navy-soft), transparent),
+    var(--surface-tint);
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-6);
+}
+
+.auth-card h1 {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  margin: 0;
+  color: var(--on-surface);
+}
+
+.auth-sub {
+  margin: calc(-1 * var(--space-2)) 0 0;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.auth-links {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-size: 0.9rem;
+}
+
+.auth-links a {
+  color: var(--primary);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.auth-links a:hover {
+  text-decoration: underline;
+}
+
+.auth-note {
+  background: var(--navy-soft);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3) var(--space-4);
+  color: var(--primary);
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+/* Portal shell */
+.portal-shell {
+  min-height: 100vh;
+  background: var(--surface-tint);
+  display: flex;
+  flex-direction: column;
+}
+
+.portal-topbar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--outline);
+  padding: var(--space-3) var(--space-6);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.portal-topbar-user {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  font-size: 0.92rem;
+  color: var(--text-secondary);
+}
+
+.portal-main {
+  flex: 1;
+  width: 100%;
+  max-width: 880px;
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-4) var(--space-10);
+}
+
+.portal-main h1 {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  margin: 0 0 var(--space-2);
+}
+
+.portal-sub {
+  color: var(--text-secondary);
+  margin: 0 0 var(--space-6);
+}
+
+/* Case cards (dashboard) */
+.case-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.case-card {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  padding: var(--space-5);
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.case-card:hover {
+  box-shadow: var(--shadow-2);
+  transform: translateY(-1px);
+}
+
+.case-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.case-card-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.case-card-meta {
+  margin-top: var(--space-2);
+  display: flex;
+  gap: var(--space-5);
+  flex-wrap: wrap;
+  color: var(--text-secondary);
+  font-size: 0.92rem;
+}
+
+.case-card-estimate {
+  color: var(--primary);
+  font-weight: 700;
+}
+
+/* Stage badge */
+.stage-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: var(--radius-pill);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  background: var(--navy-soft);
+  color: var(--primary);
+  white-space: nowrap;
+}
+
+.stage-badge.stage-settled,
+.stage-badge.stage-closed {
+  background: #e7f4ea;
+  color: var(--success);
+}
+
+.stage-badge.stage-documents_needed {
+  background: var(--orange-soft);
+  color: var(--orange);
+}
+
+/* Stage progress tracker */
+.stage-progress {
+  display: flex;
+  gap: var(--space-2);
+  margin: var(--space-4) 0 var(--space-2);
+}
+
+.stage-step {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.stage-step-bar {
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--outline);
+}
+
+.stage-step.done .stage-step-bar {
+  background: var(--primary);
+}
+
+.stage-step.current .stage-step-bar {
+  background: var(--cta);
+}
+
+.stage-step-label {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stage-step.current .stage-step-label {
+  color: var(--on-surface);
+  font-weight: 700;
+}
+
+/* Updates feed */
+.updates-feed {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.update-item {
+  padding: var(--space-4);
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+.update-item-body {
+  margin: 0;
+  white-space: pre-wrap;
+  line-height: 1.55;
+}
+
+.update-item-date {
+  display: block;
+  margin-top: var(--space-2);
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.update-item.stage-change {
+  background: var(--navy-soft);
+  border-color: transparent;
+  color: var(--primary);
+  font-size: 0.92rem;
+  padding: var(--space-3) var(--space-4);
+}
+
+/* Case detail sections */
+.portal-section {
+  margin-top: var(--space-6);
+}
+
+.portal-section > h2 {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  margin: 0 0 var(--space-3);
+}
+
+.portal-back {
+  display: inline-block;
+  margin-bottom: var(--space-4);
+  color: var(--primary);
+  font-weight: 600;
+  text-decoration: none;
+  font-size: 0.92rem;
+}
+
+.portal-back:hover {
+  text-decoration: underline;
+}
+
+.portal-empty {
+  padding: var(--space-8) var(--space-5);
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+@media (max-width: 640px) {
+  .portal-topbar {
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .portal-topbar-user span {
+    display: none;
+  }
+
+  .stage-progress {
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .stage-step {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .stage-step-bar {
+    width: 48px;
+    flex: 0 0 48px;
+  }
+
+  .auth-card {
+    padding: var(--space-5) var(--space-4);
+  }
+}

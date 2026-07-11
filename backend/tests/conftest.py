@@ -1,3 +1,5 @@
+import re
+
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
@@ -75,16 +77,32 @@ async def session_factory(engine):
 
 
 @pytest_asyncio.fixture
-async def client(session_factory):
+async def make_client(session_factory):
+    """Factory for API clients that share the app/test DB but have their own
+    cookie jars (so admin and user sessions can coexist in one test)."""
+
     async def _override_get_db():
         async with session_factory() as s:
             yield s
 
     app.dependency_overrides[get_db] = _override_get_db
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as c:
-        yield c
+    clients: list[AsyncClient] = []
+
+    async def _make() -> AsyncClient:
+        c = AsyncClient(transport=transport, base_url="http://test")
+        clients.append(c)
+        return c
+
+    yield _make
+    for c in clients:
+        await c.aclose()
     app.dependency_overrides.clear()
+
+
+@pytest_asyncio.fixture
+async def client(make_client):
+    return await make_client()
 
 
 @pytest_asyncio.fixture
@@ -97,3 +115,42 @@ async def admin_client(client, session_factory):
     )
     assert resp.status_code == 200
     return client
+
+
+USER_EMAIL = "pat@example.com"
+USER_PASSWORD = "userpass123"
+
+
+async def seed_smtp_settings(session_factory) -> None:
+    from app.services.email import get_app_settings
+
+    async with session_factory() as s:
+        row = await get_app_settings(s)
+        row.smtp_host = "mail.example.com"
+        row.from_email = "noreply@example.com"
+        row.app_base_url = "https://acciassist.example"
+        await s.commit()
+
+
+def claim_token_from(sent_emails) -> str:
+    body = sent_emails[-1][1].get_body(preferencelist=("plain",)).get_content()
+    match = re.search(r"claim\?token=([A-Za-z0-9_-]+)", body)
+    assert match, f"no claim link in email:\n{body}"
+    return match.group(1)
+
+
+@pytest_asyncio.fixture
+async def user_client(make_client, session_factory, sent_emails):
+    """A client logged in as a user who came through the lead → claim flow."""
+    await seed_smtp_settings(session_factory)
+    c = await make_client()
+    resp = await c.post(
+        "/api/leads", json={"name": "Pat Smith", "email": USER_EMAIL, "phone": "555-1234"}
+    )
+    assert resp.status_code == 201
+    resp = await c.post(
+        "/api/auth/claim",
+        json={"token": claim_token_from(sent_emails), "password": USER_PASSWORD},
+    )
+    assert resp.status_code == 200, resp.text
+    return c
