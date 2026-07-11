@@ -14,6 +14,14 @@ export type QuestionOption = {
   display_order: number;
 };
 
+export type QuestionConfig = {
+  placeholder?: string;
+  min?: number;
+  max?: number;
+  max_length?: number;
+  disallow_future?: boolean;
+};
+
 export type Question = {
   id: number;
   slug: string;
@@ -23,7 +31,7 @@ export type Question = {
   is_required: boolean;
   display_order: number;
   page_group: number | null;
-  config: Record<string, unknown>;
+  config: QuestionConfig;
   options: QuestionOption[];
 };
 

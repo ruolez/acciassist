@@ -5,7 +5,7 @@ import { Logo } from "../../components/Logo";
 import { api } from "../../api/client";
 import type { AnswerValue, IntakeStart } from "../../api/types";
 import { QuestionRenderer } from "./QuestionRenderer";
-import { isPageComplete, progressPercent } from "./wizard-logic";
+import { boundsError, isPageComplete, progressPercent } from "./wizard-logic";
 import "./intake.css";
 
 type Stored = {
@@ -137,6 +137,11 @@ export function IntakeWizard() {
               value={answers[q.id] ?? null}
               onChange={(v) => setAnswer(q.id, v)}
             />
+            {boundsError(q, answers[q.id] ?? null) && (
+              <p className="error-text" role="alert">
+                {boundsError(q, answers[q.id] ?? null)}
+              </p>
+            )}
           </div>
         ))}
       </div>

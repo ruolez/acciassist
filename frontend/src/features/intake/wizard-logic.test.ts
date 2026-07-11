@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { Question, QuestionType } from "../../api/types";
-import { isAnswered, isPageComplete, progressPercent } from "./wizard-logic";
+import { boundsError, isAnswered, isPageComplete, progressPercent } from "./wizard-logic";
 
 function makeQuestion(type: QuestionType, overrides: Partial<Question> = {}): Question {
   return {
@@ -61,6 +61,49 @@ describe("isPageComplete", () => {
     const required = makeQuestion("short_text", { id: 1, is_required: true });
     const optional = makeQuestion("short_text", { id: 2, is_required: false });
     expect(isPageComplete([required, optional], { 1: "x" })).toBe(true);
+  });
+});
+
+describe("boundsError", () => {
+  const bounded = makeQuestion("number", { config: { min: 1, max: 10 } });
+
+  it("returns null for unanswered values", () => {
+    expect(boundsError(bounded, null)).toBeNull();
+  });
+
+  it("flags numbers outside min/max, allows boundaries", () => {
+    expect(boundsError(bounded, 0)).toBe("Enter a number of at least 1");
+    expect(boundsError(bounded, 11)).toBe("Enter a number no higher than 10");
+    expect(boundsError(bounded, 1)).toBeNull();
+    expect(boundsError(bounded, 10)).toBeNull();
+  });
+
+  it("flags future dates when disallow_future is set", () => {
+    const q = makeQuestion("date", { config: { disallow_future: true } });
+    const future = new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10);
+    expect(boundsError(q, future)).toBe("This date can't be in the future");
+    expect(boundsError(q, "2020-01-15")).toBeNull();
+  });
+
+  it("ignores dates when disallow_future is not set", () => {
+    const q = makeQuestion("date");
+    expect(boundsError(q, "2999-01-01")).toBeNull();
+  });
+
+  it("flags text over max_length", () => {
+    const q = makeQuestion("short_text", { config: { max_length: 5 } });
+    expect(boundsError(q, "abcdef")).toBe("Keep it under 5 characters");
+    expect(boundsError(q, "abcde")).toBeNull();
+  });
+
+  it("blocks page completion even for optional out-of-bounds answers", () => {
+    const optional = makeQuestion("number", {
+      id: 1,
+      is_required: false,
+      config: { min: 1 },
+    });
+    expect(isPageComplete([optional], { 1: 0 })).toBe(false);
+    expect(isPageComplete([optional], {})).toBe(true);
   });
 });
 

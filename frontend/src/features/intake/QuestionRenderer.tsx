@@ -4,10 +4,19 @@ type Props = {
   question: Question;
   value: AnswerValue;
   onChange: (value: AnswerValue) => void;
+  /** The builder preview renders this component without stealing focus. */
+  autoFocus?: boolean;
 };
 
-export function QuestionRenderer({ question, value, onChange }: Props) {
-  const placeholder = (question.config?.placeholder as string) ?? "";
+function todayISO(): string {
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+}
+
+export function QuestionRenderer({ question, value, onChange, autoFocus = true }: Props) {
+  const config = question.config ?? {};
+  const placeholder = config.placeholder ?? "";
 
   switch (question.type) {
     case "single_choice":
@@ -74,9 +83,10 @@ export function QuestionRenderer({ question, value, onChange }: Props) {
         <textarea
           className="textarea wizard-input"
           placeholder={placeholder}
+          maxLength={config.max_length}
           value={(value as string) ?? ""}
           onChange={(e) => onChange(e.target.value)}
-          autoFocus
+          autoFocus={autoFocus}
         />
       );
 
@@ -86,9 +96,11 @@ export function QuestionRenderer({ question, value, onChange }: Props) {
           className="input wizard-input"
           type="number"
           placeholder={placeholder}
+          min={config.min}
+          max={config.max}
           value={value === null || value === undefined ? "" : String(value)}
           onChange={(e) => onChange(e.target.value === "" ? null : Number(e.target.value))}
-          autoFocus
+          autoFocus={autoFocus}
         />
       );
 
@@ -97,9 +109,10 @@ export function QuestionRenderer({ question, value, onChange }: Props) {
         <input
           className="input wizard-input"
           type="date"
+          max={config.disallow_future ? todayISO() : undefined}
           value={(value as string) ?? ""}
           onChange={(e) => onChange(e.target.value)}
-          autoFocus
+          autoFocus={autoFocus}
         />
       );
 
@@ -110,9 +123,10 @@ export function QuestionRenderer({ question, value, onChange }: Props) {
           className="input wizard-input"
           type="text"
           placeholder={placeholder}
+          maxLength={config.max_length}
           value={(value as string) ?? ""}
           onChange={(e) => onChange(e.target.value)}
-          autoFocus
+          autoFocus={autoFocus}
         />
       );
   }

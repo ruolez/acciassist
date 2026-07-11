@@ -1,16 +1,37 @@
 import { useEffect, useState } from "react";
 
-import type { Question, QuestionType } from "../../api/types";
+import type { Question, QuestionConfig, QuestionType } from "../../api/types";
 
 export type QuestionDraft = {
   type: QuestionType;
   prompt: string;
   help_text: string | null;
   is_required: boolean;
-  page_group: number | null;
-  config: Record<string, unknown>;
+  config: QuestionConfig;
   options: { label: string; value: string }[];
 };
+
+const TEXT_TYPES: QuestionType[] = ["short_text", "long_text"];
+
+/** Drop config keys that don't apply to the new type so stale bounds never
+ * ride along after a type switch. */
+function pruneConfig(config: QuestionConfig, type: QuestionType): QuestionConfig {
+  const pruned: QuestionConfig = {};
+  if (config.placeholder && [...TEXT_TYPES, "number"].includes(type)) {
+    pruned.placeholder = config.placeholder;
+  }
+  if (type === "number") {
+    if (config.min !== undefined) pruned.min = config.min;
+    if (config.max !== undefined) pruned.max = config.max;
+  }
+  if (TEXT_TYPES.includes(type) && config.max_length !== undefined) {
+    pruned.max_length = config.max_length;
+  }
+  if (type === "date" && config.disallow_future) {
+    pruned.disallow_future = true;
+  }
+  return pruned;
+}
 
 type Props = {
   initial: Question | null;
@@ -37,7 +58,6 @@ function emptyDraft(): QuestionDraft {
     prompt: "",
     help_text: null,
     is_required: true,
-    page_group: null,
     config: {},
     options: [{ label: "", value: "" }],
   };
@@ -57,7 +77,6 @@ export function QuestionEditor({ initial, saving, onSave, onDelete }: Props) {
         prompt: initial.prompt,
         help_text: initial.help_text,
         is_required: initial.is_required,
-        page_group: initial.page_group,
         config: initial.config ?? {},
         options: initial.options.map((o) => ({ label: o.label, value: o.value })),
       });
@@ -69,8 +88,22 @@ export function QuestionEditor({ initial, saving, onSave, onDelete }: Props) {
   const set = <K extends keyof QuestionDraft>(key: K, value: QuestionDraft[K]) =>
     setDraft((d) => ({ ...d, [key]: value }));
 
-  const setConfig = (key: string, value: unknown) =>
-    setDraft((d) => ({ ...d, config: { ...d.config, [key]: value } }));
+  const setType = (type: QuestionType) =>
+    setDraft((d) => ({ ...d, type, config: pruneConfig(d.config, type) }));
+
+  const setConfig = <K extends keyof QuestionConfig>(
+    key: K,
+    value: QuestionConfig[K] | undefined,
+  ) =>
+    setDraft((d) => {
+      const config = { ...d.config };
+      if (value === undefined || value === "" || value === false) {
+        delete config[key];
+      } else {
+        config[key] = value;
+      }
+      return { ...d, config };
+    });
 
   const isChoice = CHOICE_TYPES.includes(draft.type);
   const showPlaceholder = ["short_text", "long_text", "number"].includes(draft.type);
@@ -97,7 +130,7 @@ export function QuestionEditor({ initial, saving, onSave, onDelete }: Props) {
         <select
           className="select"
           value={draft.type}
-          onChange={(e) => set("type", e.target.value as QuestionType)}
+          onChange={(e) => setType(e.target.value as QuestionType)}
         >
           {Object.entries(TYPE_LABELS).map(([value, label]) => (
             <option key={value} value={value}>
@@ -131,8 +164,64 @@ export function QuestionEditor({ initial, saving, onSave, onDelete }: Props) {
           <label>Placeholder (optional)</label>
           <input
             className="input"
-            value={(draft.config.placeholder as string) ?? ""}
-            onChange={(e) => setConfig("placeholder", e.target.value)}
+            value={draft.config.placeholder ?? ""}
+            onChange={(e) => setConfig("placeholder", e.target.value || undefined)}
+          />
+        </div>
+      )}
+
+      {draft.type === "number" && (
+        <div className="field-row">
+          <div className="field">
+            <label>Minimum (optional)</label>
+            <input
+              className="input"
+              type="number"
+              value={draft.config.min ?? ""}
+              onChange={(e) =>
+                setConfig("min", e.target.value === "" ? undefined : Number(e.target.value))
+              }
+            />
+          </div>
+          <div className="field">
+            <label>Maximum (optional)</label>
+            <input
+              className="input"
+              type="number"
+              value={draft.config.max ?? ""}
+              onChange={(e) =>
+                setConfig("max", e.target.value === "" ? undefined : Number(e.target.value))
+              }
+            />
+          </div>
+        </div>
+      )}
+
+      {draft.type === "date" && (
+        <label className="checkbox">
+          <input
+            type="checkbox"
+            checked={draft.config.disallow_future ?? false}
+            onChange={(e) => setConfig("disallow_future", e.target.checked || undefined)}
+          />
+          Don&apos;t allow future dates
+        </label>
+      )}
+
+      {TEXT_TYPES.includes(draft.type) && (
+        <div className="field">
+          <label>Max length (optional)</label>
+          <input
+            className="input"
+            type="number"
+            min={1}
+            value={draft.config.max_length ?? ""}
+            onChange={(e) =>
+              setConfig(
+                "max_length",
+                e.target.value === "" ? undefined : Number(e.target.value),
+              )
+            }
           />
         </div>
       )}
@@ -171,29 +260,14 @@ export function QuestionEditor({ initial, saving, onSave, onDelete }: Props) {
         </div>
       )}
 
-      <div className="field-row">
-        <label className="checkbox">
-          <input
-            type="checkbox"
-            checked={draft.is_required}
-            onChange={(e) => set("is_required", e.target.checked)}
-          />
-          Required
-        </label>
-        <div className="field page-group-field">
-          <label>Page group</label>
-          <input
-            className="input"
-            type="number"
-            placeholder="none"
-            value={draft.page_group ?? ""}
-            onChange={(e) =>
-              set("page_group", e.target.value === "" ? null : Number(e.target.value))
-            }
-          />
-          <span className="help-text">Questions sharing a number appear on one page.</span>
-        </div>
-      </div>
+      <label className="checkbox">
+        <input
+          type="checkbox"
+          checked={draft.is_required}
+          onChange={(e) => set("is_required", e.target.checked)}
+        />
+        Required
+      </label>
 
       <div className="editor-actions">
         <button className="btn btn-primary" onClick={handleSave} disabled={!canSave || saving}>
