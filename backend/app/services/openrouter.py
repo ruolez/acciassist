@@ -129,15 +129,28 @@ async def chat_completion(
     json_schema: dict | None = None,
     schema_name: str = "response",
     referer: str | None = None,
-) -> str:
+    temperature: float | None = None,
+    plugins: list[dict] | None = None,
+    timeout: float = _COMPLETION_TIMEOUT,
+    require_parameters: bool = True,
+    return_annotations: bool = False,
+) -> str | tuple[str, list]:
     """Run one non-streaming completion and return the assistant content.
 
     When ``json_schema`` is given, strict structured output is requested first;
     if the model/provider rejects the parameter, the request is retried once
     without it (the caller is expected to parse JSON out of free text).
+    ``require_parameters=False`` skips the provider-routing constraint — needed
+    for web-plugin calls, where the combination often routes to no provider.
+    With ``return_annotations=True`` the return value is ``(content,
+    annotations)`` where annotations are OpenRouter web-citation entries.
     """
     headers = _headers(api_key, referer)
     body: dict = {"model": model, "messages": messages}
+    if temperature is not None:
+        body["temperature"] = temperature
+    if plugins is not None:
+        body["plugins"] = plugins
     if json_schema is not None:
         body["response_format"] = {
             "type": "json_schema",
@@ -146,8 +159,9 @@ async def chat_completion(
         # Route only to providers that actually enforce response_format —
         # some hosts accept the parameter and silently ignore it, which
         # surfaces downstream as an unparseable reply.
-        body["provider"] = {"require_parameters": True}
-    async with httpx.AsyncClient(timeout=_COMPLETION_TIMEOUT) as client:
+        if require_parameters:
+            body["provider"] = {"require_parameters": True}
+    async with httpx.AsyncClient(timeout=timeout) as client:
         resp = await _post_completion(client, headers, body)
         if (
             resp.status_code != 200
@@ -174,7 +188,11 @@ async def chat_completion(
             "The model's reply was cut off before it finished; "
             "try a model with a larger output limit",
         )
-    content = (choices[0].get("message") or {}).get("content") if choices else None
+    message = (choices[0].get("message") or {}) if choices else {}
+    content = message.get("content")
     if not content:
         raise OpenRouterError("empty_response", "The AI model returned an empty response")
+    if return_annotations:
+        annotations = message.get("annotations")
+        return content, annotations if isinstance(annotations, list) else []
     return content

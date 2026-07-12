@@ -153,6 +153,65 @@ async def test_chat_completion_retries_when_no_provider_supports_parameters(monk
     assert "provider" not in fake.requests[1][2]
 
 
+async def test_chat_completion_sampling_params_sent_only_when_set(monkeypatch):
+    fake = FakeClient(
+        [
+            FakeResponse(200, {"choices": [{"message": {"content": "a"}}]}),
+            FakeResponse(200, {"choices": [{"message": {"content": "b"}}]}),
+        ]
+    )
+    _install(monkeypatch, fake)
+    await openrouter.chat_completion(
+        "sk-or-test", "vendor/model-b", [{"role": "user", "content": "hi"}]
+    )
+    await openrouter.chat_completion(
+        "sk-or-test", "vendor/model-b", [{"role": "user", "content": "hi"}],
+        temperature=0.7, plugins=[{"id": "web"}],
+    )
+    assert "temperature" not in fake.requests[0][2]
+    assert "plugins" not in fake.requests[0][2]
+    assert fake.requests[1][2]["temperature"] == 0.7
+    assert fake.requests[1][2]["plugins"] == [{"id": "web"}]
+
+
+async def test_chat_completion_schema_without_provider_pinning(monkeypatch):
+    fake = FakeClient(
+        [FakeResponse(200, {"choices": [{"message": {"content": "{}"}}]})]
+    )
+    _install(monkeypatch, fake)
+    await openrouter.chat_completion(
+        "sk-or-test", "vendor/model-b", [{"role": "user", "content": "hi"}],
+        json_schema={"type": "object"}, require_parameters=False,
+    )
+    body = fake.requests[0][2]
+    assert "response_format" in body
+    assert "provider" not in body
+
+
+async def test_chat_completion_returns_annotations_when_asked(monkeypatch):
+    citation = {"type": "url_citation", "url_citation": {"url": "https://example.com"}}
+    fake = FakeClient(
+        [
+            FakeResponse(
+                200,
+                {"choices": [{"message": {"content": "found", "annotations": [citation]}}]},
+            ),
+            FakeResponse(200, {"choices": [{"message": {"content": "bare"}}]}),
+        ]
+    )
+    _install(monkeypatch, fake)
+    content, annotations = await openrouter.chat_completion(
+        "sk-or-test", "vendor/model-b", [{"role": "user", "content": "hi"}],
+        return_annotations=True,
+    )
+    assert (content, annotations) == ("found", [citation])
+    content, annotations = await openrouter.chat_completion(
+        "sk-or-test", "vendor/model-b", [{"role": "user", "content": "hi"}],
+        return_annotations=True,
+    )
+    assert (content, annotations) == ("bare", [])
+
+
 async def test_chat_completion_truncated_reply_is_an_error(monkeypatch):
     fake = FakeClient(
         [
