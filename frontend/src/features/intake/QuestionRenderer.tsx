@@ -20,6 +20,25 @@ export function QuestionRenderer({ question, value, onChange, autoFocus = true }
 
   switch (question.type) {
     case "single_choice":
+      // Long option lists (e.g. all 50 US states) render as a dropdown; a
+      // button per option only works for a handful of choices.
+      if (question.options.length > 8) {
+        return (
+          <select
+            className="select wizard-input"
+            value={(value as string) ?? ""}
+            onChange={(e) => onChange(e.target.value === "" ? null : e.target.value)}
+            autoFocus={autoFocus}
+          >
+            <option value="">Select…</option>
+            {question.options.map((opt) => (
+              <option key={opt.id} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        );
+      }
       return (
         <div className="choice-list">
           {question.options.map((opt) => (

@@ -24,6 +24,23 @@ function choiceQuestion(): Question {
 }
 
 describe("QuestionRenderer", () => {
+  it("renders a dropdown for single choice with more than 8 options", async () => {
+    const onChange = vi.fn();
+    const q = {
+      ...choiceQuestion(),
+      options: Array.from({ length: 9 }, (_, i) => ({
+        id: i + 1,
+        label: `State ${i + 1}`,
+        value: `s${i + 1}`,
+        display_order: i,
+      })),
+    };
+    render(<QuestionRenderer question={q} value={null} onChange={onChange} />);
+    const select = screen.getByRole("combobox");
+    await userEvent.selectOptions(select, "s3");
+    expect(onChange).toHaveBeenCalledWith("s3");
+  });
+
   it("emits the option value when a single choice is clicked", async () => {
     const onChange = vi.fn();
     render(<QuestionRenderer question={choiceQuestion()} value={null} onChange={onChange} />);
