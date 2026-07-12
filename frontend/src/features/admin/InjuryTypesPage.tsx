@@ -76,7 +76,10 @@ export function InjuryTypesPage() {
   return (
     <div className="page">
       <div className="page-head">
-        <h1>Injury Types</h1>
+        <div>
+          <h1>Injury Types</h1>
+          <p className="page-sub">The case types patients can choose, each with its own questionnaire and summary.</p>
+        </div>
       </div>
       {error && <p className="error-text">{error}</p>}
 

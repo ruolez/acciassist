@@ -18,7 +18,10 @@ export function CasesPage() {
   return (
     <div className="page">
       <div className="page-head">
-        <h1>Cases</h1>
+        <div>
+          <h1>Cases</h1>
+          <p className="page-sub">Every captured lead, its intake, account status, and progress stage.</p>
+        </div>
       </div>
 
       <div className="filter-chips">

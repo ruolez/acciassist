@@ -8,6 +8,8 @@ import "./admin.css";
 
 const KEY = ["admin", "settings"];
 
+type Tab = "email" | "ai";
+
 type FormState = {
   smtp_host: string;
   smtp_port: string;
@@ -48,10 +50,12 @@ function ModelSelect({
   keySaved,
   value,
   onSelect,
+  placeholder = "Search models — e.g. claude, gpt, gemini",
 }: {
   keySaved: boolean;
   value: string;
   onSelect: (id: string) => void;
+  placeholder?: string;
 }) {
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
@@ -84,8 +88,9 @@ function ModelSelect({
       <input
         className="input"
         value={open ? search : value || search}
-        placeholder="Search models — e.g. claude, gpt, gemini"
+        placeholder={placeholder}
         onFocus={() => setOpen(true)}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
         onChange={(e) => {
           setSearch(e.target.value);
           setOpen(true);
@@ -98,6 +103,7 @@ function ModelSelect({
               key={m.id}
               type="button"
               className={`model-row${m.id === value ? " selected" : ""}`}
+              onMouseDown={(e) => e.preventDefault()}
               onClick={() => {
                 onSelect(m.id);
                 setSearch("");
@@ -122,6 +128,7 @@ function ModelSelect({
 
 export function SettingsPage() {
   const queryClient = useQueryClient();
+  const [tab, setTab] = useState<Tab>("email");
   const [form, setForm] = useState<FormState | null>(null);
   const [testTo, setTestTo] = useState("");
   const [testResult, setTestResult] = useState<string | null>(null);
@@ -132,6 +139,7 @@ export function SettingsPage() {
   const { data: log } = useQuery({
     queryKey: [...KEY, "email-log"],
     queryFn: () => api<EmailLogEntry[]>("/admin/settings/email-log"),
+    enabled: tab === "email",
   });
 
   useEffect(() => {
@@ -192,255 +200,335 @@ export function SettingsPage() {
   if (!form) return <div className="page muted">Loading…</div>;
 
   const set = (patch: Partial<FormState>) => setForm({ ...form, ...patch });
+  const keySaved = Boolean(data?.openrouter_api_key_set);
+
+  const saveButton = (
+    <button className="btn btn-primary" type="submit" disabled={save.isPending}>
+      {save.isSuccess && !save.isPending ? "Saved ✓" : "Save settings"}
+    </button>
+  );
 
   return (
     <div className="page">
       <div className="page-head">
-        <h1>Settings</h1>
+        <div>
+          <h1>Settings</h1>
+          <p className="page-sub">Email delivery, AI models, and estimate-pipeline options.</p>
+        </div>
       </div>
       {error && <p className="error-text">{error}</p>}
 
-      <form
-        className="card settings-form"
-        onSubmit={(e) => {
-          e.preventDefault();
-          save.mutate(form);
-        }}
-      >
-        <h2>Email (SMTP)</h2>
-        <p className="muted">
-          Used to send case confirmations, account links, and progress notifications.
-        </p>
-        <div className="settings-grid">
-          <div className="field">
-            <label>SMTP host</label>
-            <input
-              className="input"
-              value={form.smtp_host}
-              onChange={(e) => set({ smtp_host: e.target.value })}
-              placeholder="smtp.example.com"
-            />
-          </div>
-          <div className="field">
-            <label>Port</label>
-            <input
-              className="input"
-              type="number"
-              value={form.smtp_port}
-              onChange={(e) => set({ smtp_port: e.target.value })}
-            />
-          </div>
-          <div className="field">
-            <label>Encryption</label>
-            <select
-              className="select"
-              value={form.smtp_tls_mode}
-              onChange={(e) =>
-                set({ smtp_tls_mode: e.target.value as FormState["smtp_tls_mode"] })
-              }
-            >
-              <option value="starttls">STARTTLS (587)</option>
-              <option value="ssl">SSL/TLS (465)</option>
-              <option value="none">None</option>
-            </select>
-          </div>
-          <div className="field">
-            <label>Username</label>
-            <input
-              className="input"
-              value={form.smtp_username}
-              onChange={(e) => set({ smtp_username: e.target.value })}
-              autoComplete="off"
-            />
-          </div>
-          <div className="field">
-            <label>Password</label>
-            <input
-              className="input"
-              type="password"
-              value={form.smtp_password}
-              onChange={(e) => set({ smtp_password: e.target.value })}
-              placeholder={data?.smtp_password_set ? "•••••••• (saved)" : ""}
-              autoComplete="new-password"
-            />
-          </div>
-          <div className="field">
-            <label>From email</label>
-            <input
-              className="input"
-              type="email"
-              value={form.from_email}
-              onChange={(e) => set({ from_email: e.target.value })}
-              placeholder="noreply@yourdomain.com"
-            />
-          </div>
-          <div className="field">
-            <label>From name</label>
-            <input
-              className="input"
-              value={form.from_name}
-              onChange={(e) => set({ from_name: e.target.value })}
-            />
-          </div>
-          <div className="field">
-            <label>Public site URL (used in email links)</label>
-            <input
-              className="input"
-              value={form.app_base_url}
-              onChange={(e) => set({ app_base_url: e.target.value })}
-              placeholder="https://yourdomain.com"
-            />
-          </div>
-        </div>
-        <h2 className="settings-section-title">Case estimates (OpenRouter)</h2>
-        <p className="muted">
-          Answers from completed questionnaires are sent to this model to estimate the
-          case cost and payout shown to clients and admins.
-        </p>
-        <div className="settings-grid">
-          <div className="field">
-            <label>OpenRouter API key</label>
-            <input
-              className="input"
-              type="password"
-              value={form.openrouter_api_key}
-              onChange={(e) => set({ openrouter_api_key: e.target.value })}
-              placeholder={data?.openrouter_api_key_set ? "•••••••• (saved)" : "sk-or-…"}
-              autoComplete="new-password"
-            />
-          </div>
-          <div className="field field-wide">
-            <label>Model</label>
-            <ModelSelect
-              keySaved={Boolean(data?.openrouter_api_key_set)}
-              value={form.openrouter_model}
-              onSelect={(id) => set({ openrouter_model: id })}
-            />
-            {form.openrouter_model && (
-              <p className="muted model-current">Selected: {form.openrouter_model}</p>
+      <div className="tabs" role="tablist">
+        <button
+          role="tab"
+          aria-selected={tab === "email"}
+          className={`tab ${tab === "email" ? "active" : ""}`}
+          onClick={() => setTab("email")}
+        >
+          Email
+        </button>
+        <button
+          role="tab"
+          aria-selected={tab === "ai"}
+          className={`tab ${tab === "ai" ? "active" : ""}`}
+          onClick={() => setTab("ai")}
+        >
+          AI &amp; Estimates
+        </button>
+      </div>
+
+      {tab === "email" && (
+        <>
+          <form
+            className="card settings-form"
+            onSubmit={(e) => {
+              e.preventDefault();
+              save.mutate(form);
+            }}
+          >
+            <h2>Email (SMTP)</h2>
+            <p className="muted">
+              Used to send case confirmations, account links, and progress notifications.
+            </p>
+            <div className="settings-grid">
+              <div className="field">
+                <label>SMTP host</label>
+                <input
+                  className="input"
+                  value={form.smtp_host}
+                  onChange={(e) => set({ smtp_host: e.target.value })}
+                  placeholder="smtp.example.com"
+                />
+              </div>
+              <div className="field">
+                <label>Port</label>
+                <input
+                  className="input"
+                  type="number"
+                  value={form.smtp_port}
+                  onChange={(e) => set({ smtp_port: e.target.value })}
+                />
+              </div>
+              <div className="field">
+                <label>Encryption</label>
+                <select
+                  className="select"
+                  value={form.smtp_tls_mode}
+                  onChange={(e) =>
+                    set({ smtp_tls_mode: e.target.value as FormState["smtp_tls_mode"] })
+                  }
+                >
+                  <option value="starttls">STARTTLS (587)</option>
+                  <option value="ssl">SSL/TLS (465)</option>
+                  <option value="none">None</option>
+                </select>
+              </div>
+              <div className="field">
+                <label>Username</label>
+                <input
+                  className="input"
+                  value={form.smtp_username}
+                  onChange={(e) => set({ smtp_username: e.target.value })}
+                  autoComplete="off"
+                />
+              </div>
+              <div className="field">
+                <label>Password</label>
+                <input
+                  className="input"
+                  type="password"
+                  value={form.smtp_password}
+                  onChange={(e) => set({ smtp_password: e.target.value })}
+                  placeholder={data?.smtp_password_set ? "•••••••• (saved)" : ""}
+                  autoComplete="new-password"
+                />
+              </div>
+              <div className="field">
+                <label>From email</label>
+                <input
+                  className="input"
+                  type="email"
+                  value={form.from_email}
+                  onChange={(e) => set({ from_email: e.target.value })}
+                  placeholder="noreply@yourdomain.com"
+                />
+              </div>
+              <div className="field">
+                <label>From name</label>
+                <input
+                  className="input"
+                  value={form.from_name}
+                  onChange={(e) => set({ from_name: e.target.value })}
+                />
+              </div>
+              <div className="field">
+                <label>Public site URL (used in email links)</label>
+                <input
+                  className="input"
+                  value={form.app_base_url}
+                  onChange={(e) => set({ app_base_url: e.target.value })}
+                  placeholder="https://yourdomain.com"
+                />
+              </div>
+            </div>
+            {saveButton}
+          </form>
+
+          <div className="card settings-form">
+            <h2>Send a test email</h2>
+            <div className="inline-form">
+              <input
+                className="input"
+                type="email"
+                placeholder="you@example.com"
+                value={testTo}
+                onChange={(e) => setTestTo(e.target.value)}
+              />
+              <button
+                className="btn btn-outline"
+                disabled={!testTo || sendTest.isPending}
+                onClick={() => {
+                  setTestResult(null);
+                  sendTest.mutate();
+                }}
+              >
+                {sendTest.isPending ? "Sending…" : "Send test"}
+              </button>
+            </div>
+            {testResult && (
+              <p className={testResult.startsWith("Failed") ? "error-text" : "success-text"}>
+                {testResult}
+              </p>
             )}
           </div>
-        </div>
-        <h2 className="settings-section-title">Estimate pipeline</h2>
-        <p className="muted">
-          The estimate runs as a multi-stage pipeline: the model extracts facts and judges
-          severity/liability; all dollar math happens in code using the jurisdiction rules.
-        </p>
-        <div className="settings-grid">
-          <div className="field">
-            <label>Judgment samples per estimate (1–9)</label>
-            <input
-              className="input"
-              type="number"
-              min={1}
-              max={9}
-              value={form.sample_count}
-              onChange={(e) => set({ sample_count: e.target.value })}
-            />
-          </div>
-          <div className="field">
-            <label>Assumed contingency fee % (10–50)</label>
-            <input
-              className="input"
-              type="number"
-              min={10}
-              max={50}
-              step={0.1}
-              value={form.contingency_fee_pct}
-              onChange={(e) => set({ contingency_fee_pct: e.target.value })}
-            />
-          </div>
-        </div>
-        <label className="checkbox">
-          <input
-            type="checkbox"
-            checked={form.comps_enabled}
-            onChange={(e) => set({ comps_enabled: e.target.checked })}
-          />
-          Search the web for comparable verdicts/settlements (extra cost and latency per
-          estimate)
-        </label>
-        {form.comps_enabled && (
-          <div className="field field-wide">
-            <label>Comps model (blank = main model + ":online" web plugin)</label>
-            <input
-              className="input"
-              value={form.comps_model}
-              onChange={(e) => set({ comps_model: e.target.value })}
-              placeholder='e.g. "perplexity/sonar" — must support web search'
-            />
-          </div>
-        )}
-        <button className="btn btn-primary" type="submit" disabled={save.isPending}>
-          {save.isSuccess && !save.isPending ? "Saved ✓" : "Save settings"}
-        </button>
-      </form>
 
-      <div className="card settings-form">
-        <h2>Test AI connection</h2>
-        <p className="muted">Sends a one-line prompt to the selected model.</p>
-        <div className="inline-form">
-          <button
-            className="btn btn-outline"
-            disabled={testAi.isPending || !data?.openrouter_api_key_set}
-            onClick={() => {
-              setAiTestResult(null);
-              testAi.mutate();
-            }}
-          >
-            {testAi.isPending ? "Testing…" : "Run test"}
-          </button>
-        </div>
-        {aiTestResult && (
-          <p className={aiTestResult.startsWith("Failed") ? "error-text" : "success-text"}>
-            {aiTestResult}
-          </p>
-        )}
-      </div>
-
-      <div className="card settings-form">
-        <h2>Send a test email</h2>
-        <div className="inline-form">
-          <input
-            className="input"
-            type="email"
-            placeholder="you@example.com"
-            value={testTo}
-            onChange={(e) => setTestTo(e.target.value)}
-          />
-          <button
-            className="btn btn-outline"
-            disabled={!testTo || sendTest.isPending}
-            onClick={() => {
-              setTestResult(null);
-              sendTest.mutate();
-            }}
-          >
-            {sendTest.isPending ? "Sending…" : "Send test"}
-          </button>
-        </div>
-        {testResult && (
-          <p className={testResult.startsWith("Failed") ? "error-text" : "success-text"}>
-            {testResult}
-          </p>
-        )}
-      </div>
-
-      <div className="card settings-form">
-        <h2>Recent emails</h2>
-        {log && log.length === 0 && <p className="muted">Nothing sent yet.</p>}
-        <div className="table-list">
-          {log?.map((entry) => (
-            <div key={entry.id} className="email-log-row">
-              <span className={`badge email-${entry.status}`}>{entry.status}</span>
-              <span className="lead-name">{entry.to_email}</span>
-              <span className="muted">{entry.purpose}</span>
-              <span className="muted">{new Date(entry.created_at).toLocaleString()}</span>
-              {entry.error && <span className="error-text email-log-error">{entry.error}</span>}
+          <div className="card settings-form">
+            <h2>Recent emails</h2>
+            {log && log.length === 0 && <p className="muted">Nothing sent yet.</p>}
+            <div className="table-list">
+              {log?.map((entry) => (
+                <div key={entry.id} className="email-log-row">
+                  <span className={`badge email-${entry.status}`}>{entry.status}</span>
+                  <span className="lead-name">{entry.to_email}</span>
+                  <span className="muted">{entry.purpose}</span>
+                  <span className="muted">{new Date(entry.created_at).toLocaleString()}</span>
+                  {entry.error && (
+                    <span className="error-text email-log-error">{entry.error}</span>
+                  )}
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      </div>
+          </div>
+        </>
+      )}
+
+      {tab === "ai" && (
+        <form
+          className="settings-stack"
+          onSubmit={(e) => {
+            e.preventDefault();
+            save.mutate(form);
+          }}
+        >
+          <div className="card settings-form">
+            <h2>AI model (OpenRouter)</h2>
+            <p className="muted">
+              Powers questionnaire advice and the estimate pipeline&apos;s judgment stages.
+            </p>
+            <div className="settings-grid">
+              <div className="field">
+                <label>OpenRouter API key</label>
+                <input
+                  className="input"
+                  type="password"
+                  value={form.openrouter_api_key}
+                  onChange={(e) => set({ openrouter_api_key: e.target.value })}
+                  placeholder={keySaved ? "•••••••• (saved)" : "sk-or-…"}
+                  autoComplete="new-password"
+                />
+              </div>
+              <div className="field field-wide">
+                <label>Model</label>
+                <ModelSelect
+                  keySaved={keySaved}
+                  value={form.openrouter_model}
+                  onSelect={(id) => set({ openrouter_model: id })}
+                />
+                {form.openrouter_model && (
+                  <p className="muted model-current">Selected: {form.openrouter_model}</p>
+                )}
+              </div>
+            </div>
+            <div className="inline-actions">
+              <button
+                type="button"
+                className="btn btn-outline"
+                disabled={testAi.isPending || !keySaved}
+                onClick={() => {
+                  setAiTestResult(null);
+                  testAi.mutate();
+                }}
+              >
+                {testAi.isPending ? "Testing…" : "Test connection"}
+              </button>
+              {aiTestResult && (
+                <span
+                  className={aiTestResult.startsWith("Failed") ? "error-text" : "success-text"}
+                >
+                  {aiTestResult}
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="card settings-form">
+            <h2>Estimate pipeline</h2>
+            <p className="muted">
+              Estimates run as a multi-stage pipeline: the model extracts facts and judges
+              severity and liability; all dollar math happens in code using the jurisdiction
+              rules.
+            </p>
+            <div className="settings-grid">
+              <div className="field">
+                <label>Judgment samples per estimate (1–9)</label>
+                <input
+                  className="input"
+                  type="number"
+                  min={1}
+                  max={9}
+                  value={form.sample_count}
+                  onChange={(e) => set({ sample_count: e.target.value })}
+                />
+                <p className="field-hint">
+                  More samples = steadier medians and an honest spread, at more cost.
+                </p>
+              </div>
+              <div className="field">
+                <label>Assumed contingency fee % (10–50)</label>
+                <input
+                  className="input"
+                  type="number"
+                  min={10}
+                  max={50}
+                  step={0.1}
+                  value={form.contingency_fee_pct}
+                  onChange={(e) => set({ contingency_fee_pct: e.target.value })}
+                />
+                <p className="field-hint">
+                  Used for the &quot;estimated in your pocket&quot; figure patients see.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="card settings-form">
+            <h2>Comparable results (web search)</h2>
+            <label className="checkbox">
+              <input
+                type="checkbox"
+                checked={form.comps_enabled}
+                onChange={(e) => set({ comps_enabled: e.target.checked })}
+              />
+              Search the web for comparable verdicts and settlements
+            </label>
+            <p className="muted">
+              Anchors each estimate against real reported outcomes. Adds cost and latency per
+              estimate.
+            </p>
+            {form.comps_enabled && (
+              <div className="field field-wide">
+                <label>Comps model</label>
+                <ModelSelect
+                  keySaved={keySaved}
+                  value={form.comps_model}
+                  onSelect={(id) => set({ comps_model: id })}
+                  placeholder='Default: main model + ":online" web plugin — search to override'
+                />
+                <div className="inline-actions">
+                  {form.comps_model ? (
+                    <>
+                      <p className="muted model-current">Selected: {form.comps_model}</p>
+                      <button
+                        type="button"
+                        className="btn btn-ghost"
+                        onClick={() => set({ comps_model: "" })}
+                      >
+                        Use default
+                      </button>
+                    </>
+                  ) : (
+                    <p className="muted model-current">
+                      Using default: {form.openrouter_model || "main model"}:online
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {saveButton}
+        </form>
+      )}
     </div>
   );
 }

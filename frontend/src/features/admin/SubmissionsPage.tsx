@@ -54,7 +54,10 @@ export function SubmissionsPage() {
   return (
     <div className="page">
       <div className="page-head">
-        <h1>Submissions</h1>
+        <div>
+          <h1>Submissions</h1>
+          <p className="page-sub">Completed questionnaires with their AI estimates, newest first.</p>
+        </div>
       </div>
       {isLoading && <p className="muted">Loading…</p>}
       {data && data.length === 0 && <p className="muted">No submissions yet.</p>}

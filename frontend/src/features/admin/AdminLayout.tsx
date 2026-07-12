@@ -5,13 +5,26 @@ import { api } from "../../api/client";
 import type { Admin } from "../../api/types";
 import "./admin.css";
 
-const NAV = [
-  { to: "/admin/injury-types", label: "Injury Types" },
-  { to: "/admin/submissions", label: "Submissions" },
-  { to: "/admin/cases", label: "Cases" },
-  { to: "/admin/jurisdictions", label: "Jurisdictions" },
-  { to: "/admin/admins", label: "Admins" },
-  { to: "/admin/settings", label: "Settings" },
+const NAV_SECTIONS = [
+  {
+    label: "Intake",
+    items: [
+      { to: "/admin/injury-types", label: "Injury Types" },
+      { to: "/admin/submissions", label: "Submissions" },
+    ],
+  },
+  {
+    label: "Clients",
+    items: [{ to: "/admin/cases", label: "Cases" }],
+  },
+  {
+    label: "Configuration",
+    items: [
+      { to: "/admin/jurisdictions", label: "Jurisdictions" },
+      { to: "/admin/settings", label: "Settings" },
+      { to: "/admin/admins", label: "Admins" },
+    ],
+  },
 ];
 
 export function AdminLayout() {
@@ -39,14 +52,19 @@ export function AdminLayout() {
         <div className="admin-brand">AcciAssist</div>
         <div className="admin-role">Admin</div>
         <nav className="admin-nav">
-          {NAV.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={({ isActive }) => `admin-nav-link ${isActive ? "active" : ""}`}
-            >
-              {item.label}
-            </NavLink>
+          {NAV_SECTIONS.map((section) => (
+            <div key={section.label} className="admin-nav-section">
+              <span className="admin-nav-heading">{section.label}</span>
+              {section.items.map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  className={({ isActive }) => `admin-nav-link ${isActive ? "active" : ""}`}
+                >
+                  {item.label}
+                </NavLink>
+              ))}
+            </div>
           ))}
         </nav>
         <div className="admin-sidebar-foot">

@@ -169,22 +169,34 @@ function RuleEditor({ rule, onClose }: { rule: JurisdictionRule; onClose: () => 
 
 export function JurisdictionRulesPage() {
   const [openCode, setOpenCode] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [unreviewedOnly, setUnreviewedOnly] = useState(false);
   const { data, isLoading } = useQuery({
     queryKey: KEY,
     queryFn: () => api<JurisdictionRule[]>("/admin/jurisdictions"),
   });
 
   const unreviewed = data?.filter((r) => r.needs_review).length ?? 0;
+  const needle = search.trim().toLowerCase();
+  const visible = (data ?? []).filter(
+    (r) =>
+      (!unreviewedOnly || r.needs_review) &&
+      (!needle ||
+        r.state_name.toLowerCase().includes(needle) ||
+        r.state_code.toLowerCase().includes(needle)),
+  );
 
   return (
     <div className="page">
       <div className="page-head">
-        <h1>Jurisdiction Rules</h1>
+        <div>
+          <h1>Jurisdiction Rules</h1>
+          <p className="page-sub">
+            Per-state legal parameters used by the estimate pipeline: comparative-negligence
+            rule, statute of limitations, no-fault thresholds, and damage caps.
+          </p>
+        </div>
       </div>
-      <p className="muted">
-        Per-state legal parameters used by the estimate pipeline: comparative-negligence rule,
-        statute of limitations, no-fault thresholds, and damage caps.
-      </p>
       {unreviewed > 0 && (
         <div className="card jurisdiction-warning">
           {unreviewed} of {data?.length} states are seeded from public sources and have not been
@@ -193,9 +205,29 @@ export function JurisdictionRulesPage() {
         </div>
       )}
 
+      <div className="toolbar">
+        <input
+          className="input toolbar-search"
+          placeholder="Search states…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <label className="checkbox">
+          <input
+            type="checkbox"
+            checked={unreviewedOnly}
+            onChange={(e) => setUnreviewedOnly(e.target.checked)}
+          />
+          Needs review only
+        </label>
+        <span className="muted toolbar-count">
+          {visible.length} of {data?.length ?? 0}
+        </span>
+      </div>
+
       {isLoading && <p className="muted">Loading…</p>}
       <div className="table-list">
-        {data?.map((rule) => (
+        {visible.map((rule) => (
           <div key={rule.state_code} className="card jurisdiction-row">
             <div className="jurisdiction-summary">
               <span className="jurisdiction-state">

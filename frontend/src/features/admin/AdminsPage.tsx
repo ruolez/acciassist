@@ -40,7 +40,10 @@ export function AdminsPage() {
   return (
     <div className="page">
       <div className="page-head">
-        <h1>Admins</h1>
+        <div>
+          <h1>Admins</h1>
+          <p className="page-sub">People who can sign in to this panel.</p>
+        </div>
       </div>
 
       <form
