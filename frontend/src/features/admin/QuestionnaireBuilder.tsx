@@ -2,84 +2,15 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
-import { api, ApiError } from "../../api/client";
-import type { EstimateAdvice, Question } from "../../api/types";
+import { api } from "../../api/client";
+import type { Question } from "../../api/types";
+import { AdviceCard } from "./AdviceCard";
 import { groupIntoPages } from "./page-layout";
 import { PageLayoutList } from "./PageLayoutList";
 import { QuestionEditor, type QuestionDraft } from "./QuestionEditor";
+import { TYPE_SHORT } from "./question-labels";
 import { useActionError } from "./useActionError";
 import "./admin.css";
-
-function AdviceCard({ injuryTypeId }: { injuryTypeId: number }) {
-  const queryClient = useQueryClient();
-  const KEY = ["admin", "ai", "advice", injuryTypeId];
-  const [adviceError, setAdviceError] = useState<string | null>(null);
-  const { data } = useQuery({
-    queryKey: KEY,
-    queryFn: () => api<EstimateAdvice | null>(`/admin/ai/injury-types/${injuryTypeId}/advice`),
-  });
-
-  const generate = useMutation({
-    mutationFn: () =>
-      api<EstimateAdvice>(`/admin/ai/injury-types/${injuryTypeId}/advice`, { method: "POST" }),
-    onSuccess: (advice) => {
-      setAdviceError(null);
-      queryClient.setQueryData(KEY, advice);
-    },
-    onError: (e) =>
-      setAdviceError(
-        e instanceof ApiError && e.code === "ai_not_configured"
-          ? "Configure the OpenRouter key and model in Settings first."
-          : e instanceof ApiError
-            ? e.message
-            : "Could not get AI recommendations",
-      ),
-  });
-
-  return (
-    <div className="card advice-card">
-      <div className="advice-head">
-        <div>
-          <h2>AI recommendations</h2>
-          <p className="muted">
-            Ask the AI what this questionnaire should collect for accurate case cost and
-            payout estimates.
-          </p>
-        </div>
-        <button
-          className="btn btn-outline"
-          disabled={generate.isPending}
-          onClick={() => generate.mutate()}
-        >
-          {generate.isPending
-            ? "Asking…"
-            : data
-              ? "Regenerate"
-              : "Ask AI what's needed"}
-        </button>
-      </div>
-      {adviceError && <p className="error-text">{adviceError}</p>}
-      {data && (
-        <>
-          <pre className="advice-content">{data.content}</pre>
-          <p className="muted advice-meta">
-            {data.model} · {new Date(data.updated_at).toLocaleString()}
-          </p>
-        </>
-      )}
-    </div>
-  );
-}
-
-const TYPE_SHORT: Record<string, string> = {
-  single_choice: "single",
-  multi_choice: "multi",
-  short_text: "text",
-  number: "number",
-  date: "date",
-  yes_no: "yes/no",
-  long_text: "long text",
-};
 
 export function QuestionnaireBuilder() {
   const { id } = useParams();
@@ -243,7 +174,7 @@ export function QuestionnaireBuilder() {
         </div>
       </div>
 
-      <AdviceCard injuryTypeId={injuryTypeId} />
+      <AdviceCard injuryTypeId={injuryTypeId} questions={questions} />
     </div>
   );
 }

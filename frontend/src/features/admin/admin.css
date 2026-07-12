@@ -672,3 +672,121 @@
   margin: 0;
   font-size: 0.82rem;
 }
+
+/* ── AI proposal review ────────────────────────────────────────────── */
+.advice-overview {
+  margin: 0;
+  white-space: pre-wrap;
+  line-height: 1.55;
+}
+.btn-link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--primary);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.proposal-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: 100%;
+}
+.proposal-section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.proposal-section-head h3 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+.proposal-item {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  padding: var(--space-3);
+  border: 1px solid var(--outline);
+  border-radius: 8px;
+  cursor: pointer;
+}
+.proposal-item input[type="checkbox"] {
+  margin-top: 4px;
+}
+.proposal-item.applied {
+  opacity: 0.65;
+  cursor: default;
+  background: var(--background, #f8f9fa);
+}
+.proposal-item.stale {
+  opacity: 0.55;
+  cursor: default;
+}
+.proposal-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.proposal-prompt {
+  margin: 0;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.proposal-required {
+  font-weight: 400;
+  font-size: 0.82rem;
+}
+.badge.proposal-badge {
+  background: var(--primary-light, #e8f0fe);
+  color: var(--primary);
+}
+.proposal-help,
+.proposal-config,
+.proposal-rationale {
+  margin: 0;
+  font-size: 0.85rem;
+}
+.proposal-summary {
+  margin: 0;
+  font-size: 0.9rem;
+}
+.proposal-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+.proposal-option-chip {
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-pill, 999px);
+  padding: 1px 10px;
+  font-size: 0.8rem;
+}
+.badge.proposal-applied {
+  background: #e7f4ea;
+  color: var(--success);
+  align-self: flex-start;
+}
+.badge.proposal-caution {
+  background: #fce8e6;
+  color: var(--error, #d93025);
+  align-self: flex-start;
+}
+.proposal-diff summary {
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: var(--text-secondary, #5f6368);
+}
+.proposal-diff-cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-4);
+  margin-top: var(--space-2);
+  padding: var(--space-3);
+  background: var(--background, #f8f9fa);
+  border-radius: 8px;
+}

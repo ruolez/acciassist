@@ -1,10 +1,10 @@
 from fastapi import APIRouter
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from app.deps import DbSession
 from app.errors import AppError
-from app.models import InjuryType, Question, QuestionOption, SummaryTemplate
+from app.models import InjuryType, Question, SummaryTemplate
 from app.schemas import (
     InjuryTypeIn,
     InjuryTypeOut,
@@ -14,6 +14,12 @@ from app.schemas import (
     ReorderIn,
     SummaryTemplateIn,
     SummaryTemplateOut,
+)
+from app.services.questions import (
+    apply_question_update,
+    create_questions,
+    load_question,
+    next_display_order,
 )
 from app.services.slugs import slugify_unique
 
@@ -25,14 +31,6 @@ async def _get_injury_type(db: DbSession, injury_type_id: int) -> InjuryType:
     if obj is None:
         raise AppError(404, "not_found", "Injury type not found")
     return obj
-
-
-async def _next_order(db: DbSession, model, **filters) -> int:
-    stmt = select(func.coalesce(func.max(model.display_order), -1))
-    for attr, val in filters.items():
-        stmt = stmt.where(getattr(model, attr) == val)
-    current_max = await db.scalar(stmt)
-    return int(current_max) + 1
 
 
 async def _apply_order(db: DbSession, model, ordered_ids: list[int], **filters) -> None:
@@ -61,7 +59,7 @@ async def create_injury_type(data: InjuryTypeIn, db: DbSession) -> InjuryType:
         name=data.name,
         description=data.description,
         is_published=data.is_published,
-        display_order=await _next_order(db, InjuryType),
+        display_order=await next_display_order(db, InjuryType),
     )
     db.add(obj)
     await db.commit()
@@ -96,24 +94,6 @@ async def reorder_injury_types(data: ReorderIn, db: DbSession) -> None:
 
 
 # ── Questions ──────────────────────────────────────────────────────────
-async def _load_question(db: DbSession, injury_type_id: int, question_id: int) -> Question:
-    q = await db.scalar(
-        select(Question)
-        .where(Question.id == question_id, Question.injury_type_id == injury_type_id)
-        .options(selectinload(Question.options))
-    )
-    if q is None:
-        raise AppError(404, "not_found", "Question not found")
-    return q
-
-
-def _replace_options(question: Question, options: list) -> None:
-    question.options = [
-        QuestionOption(label=o.label, value=o.value, display_order=i)
-        for i, o in enumerate(options)
-    ]
-
-
 @router.get(
     "/injury-types/{injury_type_id}/questions", response_model=list[QuestionOut]
 )
@@ -137,27 +117,9 @@ async def create_question(
     injury_type_id: int, data: QuestionIn, db: DbSession
 ) -> Question:
     await _get_injury_type(db, injury_type_id)
-    existing_slugs = list(
-        await db.scalars(
-            select(Question.slug).where(Question.injury_type_id == injury_type_id)
-        )
-    )
-    question = Question(
-        injury_type_id=injury_type_id,
-        slug=slugify_unique(data.prompt, existing_slugs),
-        type=data.type,
-        prompt=data.prompt,
-        help_text=data.help_text,
-        is_required=data.is_required,
-        config=data.config.model_dump(exclude_none=True),
-        display_order=await _next_order(
-            db, Question, injury_type_id=injury_type_id
-        ),
-    )
-    _replace_options(question, data.options)
-    db.add(question)
+    (question,) = await create_questions(db, injury_type_id, [data])
     await db.commit()
-    return await _load_question(db, injury_type_id, question.id)
+    return await load_question(db, injury_type_id, question.id)
 
 
 # Registered before the {question_id} routes so the literal "layout" segment
@@ -199,24 +161,19 @@ async def set_question_layout(
 async def update_question(
     injury_type_id: int, question_id: int, data: QuestionIn, db: DbSession
 ) -> Question:
-    question = await _load_question(db, injury_type_id, question_id)
-    question.type = data.type
-    question.prompt = data.prompt
-    question.help_text = data.help_text
-    question.is_required = data.is_required
+    question = await load_question(db, injury_type_id, question_id)
     # page_group is deliberately not writable here — the layout endpoint owns it,
     # so saving a question can never scramble the page structure.
-    question.config = data.config.model_dump(exclude_none=True)
-    _replace_options(question, data.options)
+    apply_question_update(question, data)
     await db.commit()
-    return await _load_question(db, injury_type_id, question_id)
+    return await load_question(db, injury_type_id, question_id)
 
 
 @router.delete(
     "/injury-types/{injury_type_id}/questions/{question_id}", status_code=204
 )
 async def delete_question(injury_type_id: int, question_id: int, db: DbSession) -> None:
-    question = await _load_question(db, injury_type_id, question_id)
+    question = await load_question(db, injury_type_id, question_id)
     await db.delete(question)
     await db.commit()
 

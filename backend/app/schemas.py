@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 
@@ -293,8 +293,48 @@ class OpenRouterModelOut(BaseModel):
     supports_structured_outputs: bool
 
 
+class QuestionPayloadOut(BaseModel):
+    """A stored proposal payload — mirrors QuestionIn for output."""
+
+    type: QuestionType
+    prompt: str
+    help_text: str | None = None
+    is_required: bool = True
+    config: dict = Field(default_factory=dict)
+    options: list[QuestionOptionIn] = Field(default_factory=list)
+
+
+class ProposalAddOut(BaseModel):
+    id: str
+    kind: Literal["add"]
+    payload: QuestionPayloadOut
+    rationale: str
+    applied: bool = False
+    applied_at: datetime | None = None
+    created_question_id: int | None = None
+
+
+class ProposalEditOut(BaseModel):
+    id: str
+    kind: Literal["edit"]
+    question_id: int
+    payload: QuestionPayloadOut
+    rationale: str
+    change_summary: str
+    applied: bool = False
+    applied_at: datetime | None = None
+
+
+ProposalOut = Annotated[ProposalAddOut | ProposalEditOut, Field(discriminator="kind")]
+
+
+class AdviceApplyIn(BaseModel):
+    proposal_ids: list[str] = Field(min_length=1, max_length=50)
+
+
 class EstimateAdviceOut(ORMModel):
     content: str
+    proposals: list[ProposalOut] | None = None
     model: str | None
     updated_at: datetime
 

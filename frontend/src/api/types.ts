@@ -129,8 +129,41 @@ export type OpenRouterModel = {
   supports_structured_outputs: boolean;
 };
 
+export type QuestionPayload = {
+  type: QuestionType;
+  prompt: string;
+  help_text: string | null;
+  is_required: boolean;
+  config: QuestionConfig;
+  options: { label: string; value: string }[];
+};
+
+export type ProposalAdd = {
+  id: string;
+  kind: "add";
+  payload: QuestionPayload;
+  rationale: string;
+  applied: boolean;
+  applied_at: string | null;
+  created_question_id: number | null;
+};
+
+export type ProposalEdit = {
+  id: string;
+  kind: "edit";
+  question_id: number;
+  payload: QuestionPayload;
+  rationale: string;
+  change_summary: string;
+  applied: boolean;
+  applied_at: string | null;
+};
+
+export type Proposal = ProposalAdd | ProposalEdit;
+
 export type EstimateAdvice = {
   content: string;
+  proposals: Proposal[] | null;
   model: string | null;
   updated_at: string;
 };

@@ -241,6 +241,9 @@ class EstimateAdvice(Base):
         ForeignKey("injury_types.id", ondelete="CASCADE"), unique=True, nullable=False
     )
     content: Mapped[str] = mapped_column(Text, nullable=False)
+    # Structured question proposals (adds + edits) with applied-state metadata;
+    # NULL for rows generated before structured advice existed.
+    proposals: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     model: Mapped[str | None] = mapped_column(String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
