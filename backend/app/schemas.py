@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
@@ -192,13 +192,38 @@ class SummaryOut(BaseModel):
     estimate_note: str
 
 
+class PublicWarning(BaseModel):
+    code: str
+    severity: str
+    message: str
+    deadline: date | None = None
+
+
+class PublicGate(BaseModel):
+    code: str
+    title: str
+    explanation: str
+
+
 class PublicEstimateOut(BaseModel):
-    """Patient-facing estimate status: payout range only, never reasoning,
-    costs, or anything that reveals how the estimate is produced."""
+    """Patient-facing estimate. Built from an allowlist of the assembled
+    result: pipeline internals (extraction, samples, comps, adversarial raw
+    output, stage errors, model names) are never exposed here."""
 
     status: Literal["none", "pending", "completed", "failed"]
+    # Gross settlement range (kept as payout_* for compatibility).
     payout_min: int | None = None
     payout_max: int | None = None
+    # Estimated in-pocket range after fee, case costs, and lien assumptions.
+    net_min: int | None = None
+    net_max: int | None = None
+    fee_pct_assumed: float | None = None
+    drivers: list[str] | None = None
+    reducers: list[str] | None = None
+    improvements: list[str] | None = None
+    warnings: list[PublicWarning] | None = None
+    gated: PublicGate | None = None
+    disclaimer: str | None = None
 
 
 # ── Leads ──────────────────────────────────────────────────────────────
@@ -238,9 +263,16 @@ class CaseEstimateAdminOut(ORMModel):
     payout_max: int | None
     case_cost_min: int | None
     case_cost_max: int | None
+    gross_min: int | None = None
+    gross_max: int | None = None
+    net_min: int | None = None
+    net_max: int | None = None
     confidence: str | None
     reasoning: str | None
     missing_info: list[str] | None
+    result: dict | None = None
+    internals: dict | None = None
+    stage_status: dict | None = None
     model: str | None
     error: str | None
     updated_at: datetime

@@ -1,184 +1,153 @@
-import json
+"""End-to-end pipeline flow through the public/admin API (model calls mocked).
+Deeper per-scenario coverage lives in test_pipeline.py."""
 
 import pytest
 
-from app.services.estimates import parse_estimate_content
 from app.services.openrouter import OpenRouterError
+from tests.fixtures_estimates import (
+    PipelineDispatcher,
+    completed_session,
+    seed_ai_settings,
+    seed_jurisdictions,
+)
 
-VALID_ESTIMATE = {
-    "payout_min": 5000,
-    "payout_max": 20000,
-    "case_cost_min": 1000,
-    "case_cost_max": 3000,
-    "confidence": "medium",
-    "reasoning": "Rear-end collision with clear liability but unknown treatment.",
-    "missing_information": ["medical treatment details"],
+PUBLIC_KEYS = {
+    "status", "payout_min", "payout_max", "net_min", "net_max", "fee_pct_assumed",
+    "drivers", "reducers", "improvements", "warnings", "gated", "disclaimer",
 }
 
 
-async def seed_ai_settings(session_factory) -> None:
-    from app.services.email import get_app_settings
-
-    async with session_factory() as s:
-        row = await get_app_settings(s)
-        row.openrouter_api_key = "sk-or-test"
-        row.openrouter_model = "test/model"
-        await s.commit()
-
-
 @pytest.fixture
-def ai_calls(monkeypatch):
-    """Capture chat_completion calls; each entry is the kwargs of one call."""
-    calls: list[dict] = []
-
-    async def _fake(api_key, model, messages, json_schema=None, schema_name="response",
-                    referer=None):
-        calls.append({"api_key": api_key, "model": model, "messages": messages,
-                      "json_schema": json_schema})
-        return json.dumps(VALID_ESTIMATE)
-
-    monkeypatch.setattr("app.services.openrouter.chat_completion", _fake)
-    return calls
-
-
-async def _completed_session(admin_client) -> str:
-    resp = await admin_client.post(
-        "/api/admin/injury-types", json={"name": "Auto Accident", "is_published": True}
-    )
-    itid = resp.json()["id"]
-    q = (
-        await admin_client.post(
-            f"/api/admin/injury-types/{itid}/questions",
-            json={"type": "yes_no", "prompt": "Were you injured?"},
-        )
-    ).json()
-    sid = (
-        await admin_client.post("/api/intake/start", json={"injury_type_id": itid})
-    ).json()["session_id"]
-    await admin_client.post(
-        f"/api/intake/{sid}/answers",
-        json={"answers": [{"question_id": q["id"], "value": True}]},
-    )
-    resp = await admin_client.post(f"/api/intake/{sid}/complete")
-    assert resp.status_code == 200
-    return sid
-
-
-class TestParseEstimateContent:
-    def test_plain_json(self):
-        result = parse_estimate_content(json.dumps(VALID_ESTIMATE))
-        assert result.payout_min == 5000
-        assert result.confidence == "medium"
-
-    def test_fenced_json_with_prose(self):
-        content = f"Here is my estimate:\n```json\n{json.dumps(VALID_ESTIMATE)}\n```"
-        assert parse_estimate_content(content).payout_max == 20000
-
-    def test_inverted_range_is_swapped_and_negatives_clamped(self):
-        payload = dict(VALID_ESTIMATE, payout_min=20000, payout_max=5000, case_cost_min=-50)
-        result = parse_estimate_content(json.dumps(payload))
-        assert (result.payout_min, result.payout_max) == (5000, 20000)
-        assert result.case_cost_min == 0
-
-    def test_no_json_raises(self):
-        with pytest.raises(ValueError):
-            parse_estimate_content("I cannot provide an estimate.")
+def dispatcher(monkeypatch) -> PipelineDispatcher:
+    d = PipelineDispatcher()
+    monkeypatch.setattr("app.services.openrouter.chat_completion", d)
+    return d
 
 
 async def test_unconfigured_completion_creates_no_estimate(admin_client):
-    sid = await _completed_session(admin_client)
+    sid = await completed_session(admin_client)
     body = (await admin_client.get(f"/api/intake/{sid}/estimate")).json()
-    assert body == {"status": "none", "payout_min": None, "payout_max": None}
+    assert body["status"] == "none"
 
 
-async def test_configured_completion_produces_estimate(admin_client, session_factory, ai_calls):
+async def test_configured_completion_runs_full_pipeline(
+    admin_client, session_factory, dispatcher
+):
     await seed_ai_settings(session_factory)
-    sid = await _completed_session(admin_client)
+    await seed_jurisdictions(session_factory)
+    sid = await completed_session(admin_client)
+
+    # comps disabled by default: 1 extraction + 5 judgment samples + 1 adversarial
+    by_stage = [c["schema_name"] for c in dispatcher.calls]
+    assert by_stage.count("case_extraction") == 1
+    assert by_stage.count("case_judgment") == 5
+    assert by_stage.count("adjuster_review") == 1
+    assert by_stage.count("comparable_results") == 0
+
+    extraction_call = next(c for c in dispatcher.calls if c["schema_name"] == "case_extraction")
+    assert extraction_call["temperature"] == 0.0
+    assert "Were you injured?: Yes" in extraction_call["messages"][1]["content"]
+    judgment_call = next(c for c in dispatcher.calls if c["schema_name"] == "case_judgment")
+    assert judgment_call["temperature"] == 0.7
 
     body = (await admin_client.get(f"/api/intake/{sid}/estimate")).json()
-    assert body == {"status": "completed", "payout_min": 5000, "payout_max": 20000}
-
-    assert len(ai_calls) == 1
-    assert ai_calls[0]["model"] == "test/model"
-    assert ai_calls[0]["json_schema"] is not None
-    assert "Were you injured?: Yes" in ai_calls[0]["messages"][1]["content"]
+    assert body["status"] == "completed"
+    assert 0 < body["payout_min"] <= body["payout_max"]
+    assert 0 <= body["net_min"] <= body["net_max"] < body["payout_max"]
+    assert body["fee_pct_assumed"] == 33.3
+    assert body["gated"] is None
+    assert any("rear-end" in d.lower() for d in body["drivers"])
+    assert body["reducers"] == [
+        "The defense will question delayed treatment.",
+        "Future care costs are not in writing.",
+    ]
+    assert "not legal advice" in body["disclaimer"]
 
     admin_body = (await admin_client.get(f"/api/admin/ai/sessions/{sid}/estimate")).json()
     assert admin_body["status"] == "completed"
-    assert admin_body["case_cost_min"] == 1000
-    assert admin_body["reasoning"] == VALID_ESTIMATE["reasoning"]
-    assert admin_body["missing_info"] == ["medical treatment details"]
+    assert admin_body["gross_min"] == body["payout_min"]
     assert admin_body["model"] == "test/model"
+    stages = admin_body["stage_status"]
+    assert stages["extraction"]["status"] == "completed"
+    assert stages["gates"]["status"] == "completed"
+    assert stages["comps"]["status"] == "skipped"
+    assert stages["judgment"]["status"] == "completed"
+    assert stages["adversarial"]["status"] == "completed"
+    assert stages["assembly"]["status"] == "completed"
+    internals = admin_body["internals"]
+    assert internals["extraction"]["meta"]["state"] == "CA"
+    assert len(internals["samples"]["valid"]) == 5
+    assert internals["samples"]["median_tier"] == 3
+    assert "assembly_trace" in internals
 
 
-async def test_public_estimate_never_leaks_admin_fields(
-    admin_client, session_factory, ai_calls
-):
+async def test_public_estimate_never_leaks_internals(admin_client, session_factory, dispatcher):
     await seed_ai_settings(session_factory)
-    sid = await _completed_session(admin_client)
+    await seed_jurisdictions(session_factory)
+    sid = await completed_session(admin_client)
     body = (await admin_client.get(f"/api/intake/{sid}/estimate")).json()
-    assert set(body) == {"status", "payout_min", "payout_max"}
+    assert set(body) == PUBLIC_KEYS
 
 
-async def test_model_failure_marks_estimate_failed(admin_client, session_factory, monkeypatch):
+async def test_extraction_failure_fails_run(admin_client, session_factory, dispatcher):
     await seed_ai_settings(session_factory)
-
-    async def _boom(*args, **kwargs):
-        raise OpenRouterError("timeout", "The AI model did not respond in time")
-
-    monkeypatch.setattr("app.services.openrouter.chat_completion", _boom)
-    sid = await _completed_session(admin_client)
+    dispatcher.errors["case_extraction"] = OpenRouterError("timeout", "no response")
+    sid = await completed_session(admin_client)
 
     body = (await admin_client.get(f"/api/intake/{sid}/estimate")).json()
-    assert body == {"status": "failed", "payout_min": None, "payout_max": None}
+    assert body["status"] == "failed"
     admin_body = (await admin_client.get(f"/api/admin/ai/sessions/{sid}/estimate")).json()
-    assert admin_body["error"] == "The AI model did not respond in time"
+    assert admin_body["error"].startswith("extraction_failed")
+    assert admin_body["stage_status"]["extraction"]["status"] == "failed"
 
 
-async def test_invalid_model_output_marks_estimate_failed(
-    admin_client, session_factory, monkeypatch
-):
+async def test_nonsense_extraction_reply_fails_run(admin_client, session_factory, monkeypatch):
     await seed_ai_settings(session_factory)
 
     async def _nonsense(*args, **kwargs):
         return "Sorry, I cannot help with that."
 
     monkeypatch.setattr("app.services.openrouter.chat_completion", _nonsense)
-    sid = await _completed_session(admin_client)
+    sid = await completed_session(admin_client)
     body = (await admin_client.get(f"/api/intake/{sid}/estimate")).json()
     assert body["status"] == "failed"
 
 
-async def test_recompleting_does_not_rerun_estimate(admin_client, session_factory, ai_calls):
+async def test_recompleting_does_not_rerun_estimate(admin_client, session_factory, dispatcher):
     await seed_ai_settings(session_factory)
-    sid = await _completed_session(admin_client)
+    await seed_jurisdictions(session_factory)
+    sid = await completed_session(admin_client)
+    call_count = len(dispatcher.calls)
     resp = await admin_client.post(f"/api/intake/{sid}/complete")
     assert resp.status_code == 200
-    assert len(ai_calls) == 1
+    assert len(dispatcher.calls) == call_count
     body = (await admin_client.get(f"/api/intake/{sid}/estimate")).json()
     assert body["status"] == "completed"
 
 
 async def test_rerun_requires_configuration_and_completed_session(admin_client):
-    sid = await _completed_session(admin_client)
+    sid = await completed_session(admin_client)
     resp = await admin_client.post(f"/api/admin/ai/sessions/{sid}/estimate/rerun")
     assert resp.status_code == 400
     assert resp.json()["error"]["code"] == "ai_not_configured"
 
 
-async def test_rerun_regenerates_estimate(admin_client, session_factory, ai_calls):
+async def test_rerun_regenerates_estimate(admin_client, session_factory, dispatcher):
     await seed_ai_settings(session_factory)
-    sid = await _completed_session(admin_client)
+    await seed_jurisdictions(session_factory)
+    sid = await completed_session(admin_client)
+    first_run_calls = len(dispatcher.calls)
     resp = await admin_client.post(f"/api/admin/ai/sessions/{sid}/estimate/rerun")
     assert resp.status_code == 200
-    assert len(ai_calls) == 2
+    assert len(dispatcher.calls) == first_run_calls * 2
     body = (await admin_client.get(f"/api/admin/ai/sessions/{sid}/estimate")).json()
     assert body["status"] == "completed"
 
 
-async def test_case_detail_includes_estimate(admin_client, session_factory, ai_calls):
+async def test_case_detail_includes_estimate(admin_client, session_factory, dispatcher):
     await seed_ai_settings(session_factory)
-    sid = await _completed_session(admin_client)
+    await seed_jurisdictions(session_factory)
+    sid = await completed_session(admin_client)
     resp = await admin_client.post(
         "/api/leads",
         json={"intake_session_id": sid, "name": "Pat Smith", "email": "pat@example.com"},
@@ -187,7 +156,7 @@ async def test_case_detail_includes_estimate(admin_client, session_factory, ai_c
     cases = (await admin_client.get("/api/admin/cases")).json()
     detail = (await admin_client.get(f"/api/admin/cases/{cases[0]['id']}")).json()
     assert detail["estimate"]["status"] == "completed"
-    assert detail["estimate"]["payout_max"] == 20000
+    assert detail["estimate"]["payout_max"] == detail["estimate"]["gross_max"] > 0
 
     submission = (await admin_client.get(f"/api/admin/intake-sessions/{sid}")).json()
     assert submission["estimate"]["status"] == "completed"

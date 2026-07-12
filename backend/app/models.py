@@ -214,13 +214,24 @@ class CaseEstimate(Base):
         nullable=False,
         default=EstimateStatus.pending,
     )
+    # payout_min/max mirror gross_min/max for backward compatibility.
     payout_min: Mapped[int | None] = mapped_column(Integer, nullable=True)
     payout_max: Mapped[int | None] = mapped_column(Integer, nullable=True)
     case_cost_min: Mapped[int | None] = mapped_column(Integer, nullable=True)
     case_cost_max: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    gross_min: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    gross_max: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    net_min: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    net_max: Mapped[int | None] = mapped_column(Integer, nullable=True)
     confidence: Mapped[str | None] = mapped_column(String(10), nullable=True)
     reasoning: Mapped[str | None] = mapped_column(Text, nullable=True)
     missing_info: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    # Assembled presentation payload (drivers, reducers, warnings, gated, …).
+    result: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    # Per-stage raw outputs for admin debugging; never exposed publicly.
+    internals: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    # {"extraction": {"status", "ms", "error"}, ...}
+    stage_status: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     model: Mapped[str | None] = mapped_column(String(255), nullable=True)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(

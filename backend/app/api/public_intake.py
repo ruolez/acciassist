@@ -238,6 +238,38 @@ async def complete_intake(
     return await render_session_summary(db, session)
 
 
+def _public_estimate(estimate: CaseEstimate) -> PublicEstimateOut:
+    """Allowlist projection of the assembled result — pipeline internals are
+    never exposed to patients. Pre-pipeline rows (no `result`) still return
+    the plain payout range."""
+    r = estimate.result or {}
+    gated = r.get("gated")
+    warnings = [
+        {
+            "code": w.get("code", ""),
+            "severity": w.get("severity", "info"),
+            "message": w.get("message", ""),
+            "deadline": w.get("deadline"),
+        }
+        for w in (r.get("warnings") or [])
+        if w.get("message")
+    ]
+    return PublicEstimateOut(
+        status="completed",
+        payout_min=estimate.payout_min,
+        payout_max=estimate.payout_max,
+        net_min=estimate.net_min,
+        net_max=estimate.net_max,
+        fee_pct_assumed=r.get("fee_pct"),
+        drivers=r.get("drivers"),
+        reducers=r.get("reducers"),
+        improvements=r.get("improvements"),
+        warnings=warnings or None,
+        gated=gated if isinstance(gated, dict) else None,
+        disclaimer=r.get("disclaimer"),
+    )
+
+
 @router.get("/intake/{session_id}/estimate", response_model=PublicEstimateOut)
 async def get_estimate(session_id: uuid.UUID, db: DbSession) -> PublicEstimateOut:
     await _active_session(db, session_id)
@@ -247,11 +279,7 @@ async def get_estimate(session_id: uuid.UUID, db: DbSession) -> PublicEstimateOu
     if estimate is None:
         return PublicEstimateOut(status="none")
     if estimate.status == EstimateStatus.completed:
-        return PublicEstimateOut(
-            status="completed",
-            payout_min=estimate.payout_min,
-            payout_max=estimate.payout_max,
-        )
+        return _public_estimate(estimate)
     return PublicEstimateOut(status=estimate.status.value)
 
 
