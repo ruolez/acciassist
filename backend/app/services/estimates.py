@@ -32,6 +32,7 @@ from app.schemas import QuestionIn
 from app.services import email as email_service
 from app.services import openrouter
 from app.services.email import get_app_settings
+from app.services.estimate_pipeline.parsing import extract_json_object as _extract_json_object
 from app.services.openrouter import OpenRouterError, ai_configured
 from app.services.summary import answer_display_value
 
@@ -203,9 +204,6 @@ ADVICE_SYSTEM_PROMPT = (
     "commentary belongs in overview only."
 )
 
-_JSON_BLOCK = re.compile(r"\{.*\}", re.DOTALL)
-
-
 class EstimateResult(BaseModel):
     payout_min: int
     payout_max: int
@@ -226,26 +224,6 @@ class EstimateResult(BaseModel):
         if self.case_cost_min > self.case_cost_max:
             self.case_cost_min, self.case_cost_max = self.case_cost_max, self.case_cost_min
         return self
-
-
-_THINK_BLOCK = re.compile(r"<think(?:ing)?>.*?</think(?:ing)?>", re.DOTALL | re.IGNORECASE)
-
-
-def _extract_json_object(content: str) -> dict:
-    """Pull a JSON object out of a model reply, tolerating code fences,
-    surrounding prose, and reasoning-model <think> blocks (whose braces would
-    otherwise corrupt the first-{...}-to-last-} extraction)."""
-    text = _THINK_BLOCK.sub("", content).strip()
-    if text.startswith("```"):
-        text = re.sub(r"^```[a-zA-Z]*\s*", "", text)
-        text = re.sub(r"\s*```$", "", text)
-    try:
-        return json.loads(text)
-    except json.JSONDecodeError:
-        match = _JSON_BLOCK.search(text)
-        if match is None:
-            raise ValueError("no JSON object found in model response") from None
-        return json.loads(match.group(0))
 
 
 def parse_estimate_content(content: str) -> EstimateResult:
