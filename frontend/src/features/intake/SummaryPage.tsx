@@ -8,9 +8,12 @@ import { z } from "zod";
 import { Logo } from "../../components/Logo";
 import { api, ApiError } from "../../api/client";
 import type { PublicEstimate, Summary } from "../../api/types";
+import { EstimateResultCard } from "./EstimateResultCard";
 import "./intake.css";
 
-const CALCULATING_TIMEOUT_MS = 45_000;
+// The pipeline makes ~8 model calls (extraction, sampled judgments,
+// adversarial, optional web comps) before assembling a result.
+const CALCULATING_TIMEOUT_MS = 150_000;
 
 const leadSchema = z.object({
   name: z.string().min(1, "Please enter your name"),
@@ -18,13 +21,6 @@ const leadSchema = z.object({
   phone: z.string().optional(),
 });
 type LeadForm = z.infer<typeof leadSchema>;
-
-function formatRange(min: number | null, max: number | null): string | null {
-  if (min === null && max === null) return null;
-  const fmt = (n: number) => `$${n.toLocaleString()}`;
-  if (min !== null && max !== null) return `${fmt(min)} – ${fmt(max)}`;
-  return fmt((min ?? max)!);
-}
 
 export function SummaryPage() {
   const { sessionId } = useParams();
@@ -90,12 +86,7 @@ export function SummaryPage() {
     );
 
   const estimate = estimateQuery.data;
-  const personalRange =
-    estimate?.status === "completed"
-      ? formatRange(estimate.payout_min, estimate.payout_max)
-      : null;
   const calculating = estimate?.status === "pending" && !calcTimedOut;
-  const range = personalRange ?? formatRange(data.estimate_min, data.estimate_max);
 
   return (
     <div className="wizard-bg">
@@ -110,23 +101,13 @@ export function SummaryPage() {
         <div className="summary-body">{data.body}</div>
       </div>
 
-      {calculating ? (
-        <div className="card estimate-card">
-          <span className="estimate-label">Estimated settlement range</span>
-          <div className="estimate-thinking" role="status" aria-live="polite">
-            <span className="estimate-thinking-bar" />
-            <span className="muted">Calculating your estimate…</span>
-          </div>
-        </div>
-      ) : (
-        range && (
-          <div className="card estimate-card">
-            <span className="estimate-label">Estimated settlement range</span>
-            <span className="estimate-range">{range}</span>
-            <span className="help-text">{data.estimate_note}</span>
-          </div>
-        )
-      )}
+      <EstimateResultCard
+        estimate={estimate}
+        calculating={calculating}
+        fallbackMin={data.estimate_min}
+        fallbackMax={data.estimate_max}
+        fallbackNote={data.estimate_note}
+      />
 
       {submitted ? (
         <div className="card cta-card">

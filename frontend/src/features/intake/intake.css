@@ -289,3 +289,85 @@
     width: 100%;
   }
 }
+
+/* ── Full estimate presentation (Stage-6) ─────────────────────────── */
+.estimate-net {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--space-3) var(--space-4);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+}
+.estimate-net-label {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--gold);
+  font-weight: 700;
+}
+.estimate-net-range {
+  font-family: var(--font-display);
+  font-size: clamp(1.4rem, 3.5vw, 1.9rem);
+  font-weight: 800;
+  color: #fff;
+}
+.estimate-net .help-text {
+  color: rgba(255, 255, 255, 0.72);
+}
+.estimate-warnings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.estimate-warning {
+  margin: 0;
+  font-size: 0.9rem;
+  padding: var(--space-2) var(--space-3);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.9);
+}
+.estimate-warning.urgent {
+  background: rgba(217, 48, 37, 0.28);
+  color: #ffd9d5;
+  font-weight: 600;
+}
+.estimate-factors summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #fff;
+  padding: var(--space-2) 0;
+}
+.estimate-factors ul,
+.estimate-improvements ul {
+  margin: var(--space-1) 0 var(--space-2);
+  padding-left: 1.2em;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.86);
+}
+.estimate-improvements-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--gold);
+}
+.estimate-disclaimer {
+  margin: var(--space-2) 0 0;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.55);
+}
+.estimate-gated-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  color: #fff;
+}
+.estimate-gated-text {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.86);
+}
