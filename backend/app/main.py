@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import (
     admin_admins,
+    admin_ai,
     admin_auth,
     admin_cases,
     admin_content,
@@ -61,4 +62,7 @@ app.include_router(
 )
 app.include_router(
     admin_cases.router, prefix="/api/admin", tags=["admin-cases"], dependencies=_admin_auth
+)
+app.include_router(
+    admin_ai.router, prefix="/api/admin/ai", tags=["admin-ai"], dependencies=_admin_auth
 )

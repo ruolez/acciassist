@@ -69,6 +69,12 @@ class EmailStatus(str, enum.Enum):
     skipped = "skipped"
 
 
+class EstimateStatus(str, enum.Enum):
+    pending = "pending"
+    completed = "completed"
+    failed = "failed"
+
+
 class AdminUser(Base):
     __tablename__ = "admin_users"
 
@@ -189,6 +195,58 @@ class IntakeSession(Base):
 
     answers: Mapped[list["IntakeAnswer"]] = relationship(
         back_populates="session", cascade="all, delete-orphan"
+    )
+
+
+class CaseEstimate(Base):
+    """AI-generated estimate for one intake session; a re-run overwrites the
+    row in place. No row at all means AI was not configured at completion."""
+
+    __tablename__ = "case_estimates"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    intake_session_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("intake_sessions.id", ondelete="CASCADE"), unique=True, nullable=False
+    )
+    status: Mapped[EstimateStatus] = mapped_column(
+        Enum(EstimateStatus, name="estimate_status"),
+        nullable=False,
+        default=EstimateStatus.pending,
+    )
+    payout_min: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    payout_max: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    case_cost_min: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    case_cost_max: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    confidence: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    reasoning: Mapped[str | None] = mapped_column(Text, nullable=True)
+    missing_info: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    model: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+
+class EstimateAdvice(Base):
+    """AI recommendations on what a questionnaire should ask to allow accurate
+    estimates; one row per injury type, overwritten on regenerate."""
+
+    __tablename__ = "estimate_advice"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    injury_type_id: Mapped[int] = mapped_column(
+        ForeignKey("injury_types.id", ondelete="CASCADE"), unique=True, nullable=False
+    )
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    model: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
 
 
@@ -340,6 +398,8 @@ class AppSettings(Base):
     from_name: Mapped[str] = mapped_column(String(200), nullable=False, default="AcciAssist")
     # Public origin used to build links in emails, e.g. "https://acciassist.com".
     app_base_url: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    openrouter_api_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    openrouter_model: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
 
 class EmailLog(Base):

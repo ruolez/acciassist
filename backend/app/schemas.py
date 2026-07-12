@@ -4,7 +4,14 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 
-from app.models import CaseStage, CaseUpdateKind, EmailStatus, IntakeStatus, QuestionType
+from app.models import (
+    CaseStage,
+    CaseUpdateKind,
+    EmailStatus,
+    EstimateStatus,
+    IntakeStatus,
+    QuestionType,
+)
 
 
 class ORMModel(BaseModel):
@@ -185,6 +192,15 @@ class SummaryOut(BaseModel):
     estimate_note: str
 
 
+class PublicEstimateOut(BaseModel):
+    """Patient-facing estimate status: payout range only, never reasoning,
+    costs, or anything that reveals how the estimate is produced."""
+
+    status: Literal["none", "pending", "completed", "failed"]
+    payout_min: int | None = None
+    payout_max: int | None = None
+
+
 # ── Leads ──────────────────────────────────────────────────────────────
 class LeadIn(BaseModel):
     intake_session_id: uuid.UUID | None = None
@@ -216,8 +232,23 @@ class IntakeSessionOut(ORMModel):
     completed_at: datetime | None
 
 
+class CaseEstimateAdminOut(ORMModel):
+    status: EstimateStatus
+    payout_min: int | None
+    payout_max: int | None
+    case_cost_min: int | None
+    case_cost_max: int | None
+    confidence: str | None
+    reasoning: str | None
+    missing_info: list[str] | None
+    model: str | None
+    error: str | None
+    updated_at: datetime
+
+
 class IntakeSessionDetailOut(IntakeSessionOut):
     answers: list[AnswerOut]
+    estimate: CaseEstimateAdminOut | None = None
 
 
 # ── Admin: settings ────────────────────────────────────────────────────
@@ -230,6 +261,8 @@ class SettingsOut(ORMModel):
     from_email: str | None
     from_name: str
     app_base_url: str | None
+    openrouter_api_key_set: bool
+    openrouter_model: str | None
 
 
 class SettingsIn(BaseModel):
@@ -242,10 +275,28 @@ class SettingsIn(BaseModel):
     from_email: EmailStr | None = None
     from_name: str = Field(default="AcciAssist", min_length=1, max_length=200)
     app_base_url: str | None = Field(default=None, max_length=255)
+    # None/omitted keeps the stored key; "" clears it.
+    openrouter_api_key: str | None = Field(default=None, max_length=255)
+    openrouter_model: str | None = Field(default=None, max_length=255)
 
 
 class TestEmailIn(BaseModel):
     to_email: EmailStr
+
+
+class OpenRouterModelOut(BaseModel):
+    id: str
+    name: str
+    context_length: int | None
+    prompt_price: str | None
+    completion_price: str | None
+    supports_structured_outputs: bool
+
+
+class EstimateAdviceOut(ORMModel):
+    content: str
+    model: str | None
+    updated_at: datetime
 
 
 class EmailLogOut(ORMModel):
@@ -351,3 +402,4 @@ class AdminCaseUpdateOut(CaseUpdateOut):
 class AdminCaseDetailOut(AdminCaseListOut):
     intake_session_id: uuid.UUID | None
     updates: list[AdminCaseUpdateOut]
+    estimate: CaseEstimateAdminOut | None = None

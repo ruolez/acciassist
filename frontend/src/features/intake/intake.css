@@ -209,6 +209,37 @@
 .card.estimate-card .help-text {
   color: rgba(255, 255, 255, 0.72);
 }
+.estimate-thinking {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+}
+.estimate-thinking .muted {
+  color: rgba(255, 255, 255, 0.72);
+}
+.estimate-thinking-bar {
+  display: block;
+  height: 10px;
+  width: 100%;
+  border-radius: 5px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.12) 25%,
+    rgba(255, 255, 255, 0.38) 50%,
+    rgba(255, 255, 255, 0.12) 75%
+  );
+  background-size: 200% 100%;
+  animation: estimate-shimmer 1.4s ease-in-out infinite;
+}
+@keyframes estimate-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
 .cta-card {
   padding: var(--space-6);
 }

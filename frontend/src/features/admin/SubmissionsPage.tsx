@@ -11,8 +11,28 @@ function SubmissionDetail({ sessionId }: { sessionId: string }) {
     queryFn: () => api<IntakeSessionDetail>(`/admin/intake-sessions/${sessionId}`),
   });
   if (!data) return <p className="muted">Loading…</p>;
+  const est = data.estimate;
   return (
     <div className="answer-list">
+      {est && (
+        <div className="answer-row submission-estimate">
+          <span className="muted">Estimate</span>
+          <span>
+            {est.status === "completed" && (
+              <>
+                Payout ${est.payout_min?.toLocaleString()} – $
+                {est.payout_max?.toLocaleString()} · cost $
+                {est.case_cost_min?.toLocaleString()} – $
+                {est.case_cost_max?.toLocaleString()} · {est.confidence} confidence
+              </>
+            )}
+            {est.status === "pending" && "Calculating…"}
+            {est.status === "failed" && (
+              <span className="error-text">Failed: {est.error ?? "unknown error"}</span>
+            )}
+          </span>
+        </div>
+      )}
       {data.answers.length === 0 && <p className="muted">No answers recorded.</p>}
       {data.answers.map((a) => (
         <div key={a.question_id} className="answer-row">

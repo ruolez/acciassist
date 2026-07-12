@@ -6,8 +6,14 @@ from sqlalchemy.orm import selectinload
 
 from app.deps import DbSession
 from app.errors import AppError
-from app.models import IntakeSession, Lead
-from app.schemas import IntakeSessionDetailOut, IntakeSessionOut, LeadOut
+from app.models import CaseEstimate, IntakeSession, Lead
+from app.schemas import (
+    AnswerOut,
+    CaseEstimateAdminOut,
+    IntakeSessionDetailOut,
+    IntakeSessionOut,
+    LeadOut,
+)
 
 router = APIRouter()
 
@@ -21,7 +27,7 @@ async def list_sessions(db: DbSession) -> list[IntakeSession]:
 
 
 @router.get("/intake-sessions/{session_id}", response_model=IntakeSessionDetailOut)
-async def get_session(session_id: uuid.UUID, db: DbSession) -> IntakeSession:
+async def get_session(session_id: uuid.UUID, db: DbSession) -> IntakeSessionDetailOut:
     session = await db.scalar(
         select(IntakeSession)
         .where(IntakeSession.id == session_id)
@@ -29,7 +35,18 @@ async def get_session(session_id: uuid.UUID, db: DbSession) -> IntakeSession:
     )
     if session is None:
         raise AppError(404, "not_found", "Intake session not found")
-    return session
+    estimate = await db.scalar(
+        select(CaseEstimate).where(CaseEstimate.intake_session_id == session_id)
+    )
+    return IntakeSessionDetailOut(
+        id=session.id,
+        injury_type_id=session.injury_type_id,
+        status=session.status,
+        started_at=session.started_at,
+        completed_at=session.completed_at,
+        answers=[AnswerOut.model_validate(a) for a in session.answers],
+        estimate=CaseEstimateAdminOut.model_validate(estimate) if estimate else None,
+    )
 
 
 @router.get("/leads", response_model=list[LeadOut])

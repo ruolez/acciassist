@@ -1,14 +1,16 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useParams } from "react-router-dom";
 import { z } from "zod";
 
 import { Logo } from "../../components/Logo";
 import { api, ApiError } from "../../api/client";
-import type { Summary } from "../../api/types";
+import type { PublicEstimate, Summary } from "../../api/types";
 import "./intake.css";
+
+const CALCULATING_TIMEOUT_MS = 45_000;
 
 const leadSchema = z.object({
   name: z.string().min(1, "Please enter your name"),
@@ -33,6 +35,23 @@ export function SummaryPage() {
     queryFn: () => api<Summary>(`/intake/${sessionId}/summary`),
     enabled: !!sessionId,
   });
+
+  // Personalized estimate: poll while it's being computed, then fall back to
+  // the injury type's static range if it never completes.
+  const [calcTimedOut, setCalcTimedOut] = useState(false);
+  const estimateQuery = useQuery({
+    queryKey: ["estimate", sessionId],
+    queryFn: () => api<PublicEstimate>(`/intake/${sessionId}/estimate`),
+    enabled: !!sessionId,
+    refetchInterval: (q) => (q.state.data?.status === "pending" ? 2500 : false),
+  });
+  const estimateStatus = estimateQuery.data?.status;
+
+  useEffect(() => {
+    if (estimateStatus !== "pending") return;
+    const timer = setTimeout(() => setCalcTimedOut(true), CALCULATING_TIMEOUT_MS);
+    return () => clearTimeout(timer);
+  }, [estimateStatus]);
 
   const {
     register,
@@ -70,7 +89,13 @@ export function SummaryPage() {
       </div>
     );
 
-  const range = formatRange(data.estimate_min, data.estimate_max);
+  const estimate = estimateQuery.data;
+  const personalRange =
+    estimate?.status === "completed"
+      ? formatRange(estimate.payout_min, estimate.payout_max)
+      : null;
+  const calculating = estimate?.status === "pending" && !calcTimedOut;
+  const range = personalRange ?? formatRange(data.estimate_min, data.estimate_max);
 
   return (
     <div className="wizard-bg">
@@ -85,12 +110,22 @@ export function SummaryPage() {
         <div className="summary-body">{data.body}</div>
       </div>
 
-      {range && (
+      {calculating ? (
         <div className="card estimate-card">
           <span className="estimate-label">Estimated settlement range</span>
-          <span className="estimate-range">{range}</span>
-          <span className="help-text">{data.estimate_note}</span>
+          <div className="estimate-thinking" role="status" aria-live="polite">
+            <span className="estimate-thinking-bar" />
+            <span className="muted">Calculating your estimate…</span>
+          </div>
         </div>
+      ) : (
+        range && (
+          <div className="card estimate-card">
+            <span className="estimate-label">Estimated settlement range</span>
+            <span className="estimate-range">{range}</span>
+            <span className="help-text">{data.estimate_note}</span>
+          </div>
+        )
       )}
 
       {submitted ? (

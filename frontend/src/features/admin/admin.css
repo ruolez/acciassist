@@ -537,3 +537,138 @@
   border-color: var(--primary);
   color: var(--primary);
 }
+
+/* ── AI: model picker, estimate card, advice card ─────────────────── */
+.settings-section-title {
+  margin-top: var(--space-4);
+}
+.field-wide {
+  grid-column: 1 / -1;
+}
+.model-select {
+  position: relative;
+  width: 100%;
+}
+.model-list {
+  margin-top: var(--space-2);
+  border: 1px solid var(--outline);
+  border-radius: 8px;
+  max-height: 280px;
+  overflow-y: auto;
+  background: var(--surface);
+}
+.model-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  border-bottom: 1px solid var(--outline);
+  background: none;
+  cursor: pointer;
+}
+.model-row:last-child {
+  border-bottom: none;
+}
+.model-row:hover,
+.model-row.selected {
+  background: var(--primary-light, #e8f0fe);
+}
+.model-name {
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+.model-meta {
+  font-size: 0.8rem;
+  color: var(--text-secondary, #5f6368);
+}
+.model-empty {
+  padding: var(--space-3);
+  margin: 0;
+}
+.model-current {
+  margin: var(--space-1) 0 0;
+  font-size: 0.82rem;
+}
+
+.estimate-admin {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.estimate-admin-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+}
+.estimate-admin-head h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+.estimate-admin-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--space-4);
+}
+.estimate-admin-figure {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 2px 0 0;
+}
+.estimate-admin-reasoning {
+  margin: 0;
+  white-space: pre-wrap;
+}
+.estimate-admin-missing {
+  margin: var(--space-1) 0 0;
+  padding-left: 1.2em;
+}
+.estimate-admin-meta {
+  margin: 0;
+  font-size: 0.82rem;
+}
+.badge.confidence-high { background: #e7f4ea; color: var(--success); }
+.badge.confidence-medium { background: #fef7e0; color: #b06000; }
+.badge.confidence-low { background: #fce8e6; color: var(--error, #d93025); }
+
+.submission-estimate {
+  font-size: 0.9rem;
+}
+
+.advice-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.advice-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+.advice-head h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+.advice-head .muted {
+  margin: var(--space-1) 0 0;
+}
+.advice-content {
+  margin: 0;
+  padding: var(--space-3);
+  background: var(--background, #f8f9fa);
+  border: 1px solid var(--outline);
+  border-radius: 8px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: inherit;
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+.advice-meta {
+  margin: 0;
+  font-size: 0.82rem;
+}

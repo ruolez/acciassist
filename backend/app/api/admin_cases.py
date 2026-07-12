@@ -7,6 +7,7 @@ from app.errors import AppError
 from app.models import (
     STAGE_LABELS,
     Case,
+    CaseEstimate,
     CaseStage,
     CaseUpdate,
     CaseUpdateKind,
@@ -18,6 +19,7 @@ from app.schemas import (
     AdminCaseDetailOut,
     AdminCaseListOut,
     AdminCaseUpdateOut,
+    CaseEstimateAdminOut,
     CaseStageIn,
     CaseUpdateIn,
 )
@@ -86,9 +88,17 @@ async def list_cases(
 @router.get("/cases/{case_id}", response_model=AdminCaseDetailOut)
 async def case_detail(case_id: int, db: DbSession) -> AdminCaseDetailOut:
     case = await _load_case(db, case_id, with_updates=True)
+    estimate = None
+    if case.lead.intake_session_id is not None:
+        estimate = await db.scalar(
+            select(CaseEstimate).where(
+                CaseEstimate.intake_session_id == case.lead.intake_session_id
+            )
+        )
     return AdminCaseDetailOut(
         **_list_row(case, await _injury_type_name(db, case)),
         intake_session_id=case.lead.intake_session_id,
+        estimate=CaseEstimateAdminOut.model_validate(estimate) if estimate else None,
         updates=[
             AdminCaseUpdateOut(
                 id=u.id,

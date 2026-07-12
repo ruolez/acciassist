@@ -97,6 +97,42 @@ export type IntakeSessionSummary = {
 
 export type IntakeSessionDetail = IntakeSessionSummary & {
   answers: { question_id: number; value: unknown }[];
+  estimate: CaseEstimateAdmin | null;
+};
+
+export type PublicEstimate = {
+  status: "none" | "pending" | "completed" | "failed";
+  payout_min: number | null;
+  payout_max: number | null;
+};
+
+export type CaseEstimateAdmin = {
+  status: "pending" | "completed" | "failed";
+  payout_min: number | null;
+  payout_max: number | null;
+  case_cost_min: number | null;
+  case_cost_max: number | null;
+  confidence: string | null;
+  reasoning: string | null;
+  missing_info: string[] | null;
+  model: string | null;
+  error: string | null;
+  updated_at: string;
+};
+
+export type OpenRouterModel = {
+  id: string;
+  name: string;
+  context_length: number | null;
+  prompt_price: string | null;
+  completion_price: string | null;
+  supports_structured_outputs: boolean;
+};
+
+export type EstimateAdvice = {
+  content: string;
+  model: string | null;
+  updated_at: string;
 };
 
 /** Answer value as held in the wizard before submission. */
@@ -158,6 +194,7 @@ export type AdminCaseListItem = {
 export type AdminCaseDetail = AdminCaseListItem & {
   intake_session_id: string | null;
   updates: AdminCaseUpdate[];
+  estimate: CaseEstimateAdmin | null;
 };
 
 export type AppSettings = {
@@ -169,6 +206,8 @@ export type AppSettings = {
   from_email: string | null;
   from_name: string;
   app_base_url: string | null;
+  openrouter_api_key_set: boolean;
+  openrouter_model: string | null;
 };
 
 export type EmailLogEntry = {

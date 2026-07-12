@@ -8,6 +8,8 @@ from sqlalchemy.orm import selectinload
 from app.deps import DbSession
 from app.errors import AppError
 from app.models import (
+    CaseEstimate,
+    EstimateStatus,
     InjuryType,
     IntakeAnswer,
     IntakeSession,
@@ -24,9 +26,11 @@ from app.schemas import (
     IntakeStartOut,
     LeadIn,
     LeadOut,
+    PublicEstimateOut,
     QuestionOut,
     SummaryOut,
 )
+from app.services.estimates import schedule_estimate
 from app.services.leads import process_lead
 from app.services.notifications import notify_lead_received
 from app.services.pagination import build_pages
@@ -206,13 +210,33 @@ async def save_answers(
 
 
 @router.post("/intake/{session_id}/complete", response_model=SummaryOut)
-async def complete_intake(session_id: uuid.UUID, db: DbSession) -> SummaryOut:
+async def complete_intake(
+    session_id: uuid.UUID, db: DbSession, background_tasks: BackgroundTasks
+) -> SummaryOut:
     session = await _active_session(db, session_id)
     if session.status != IntakeStatus.completed:
         session.status = IntakeStatus.completed
         session.completed_at = datetime.now(UTC)
         await db.commit()
+        await schedule_estimate(db, session, background_tasks)
     return await render_session_summary(db, session)
+
+
+@router.get("/intake/{session_id}/estimate", response_model=PublicEstimateOut)
+async def get_estimate(session_id: uuid.UUID, db: DbSession) -> PublicEstimateOut:
+    await _active_session(db, session_id)
+    estimate = await db.scalar(
+        select(CaseEstimate).where(CaseEstimate.intake_session_id == session_id)
+    )
+    if estimate is None:
+        return PublicEstimateOut(status="none")
+    if estimate.status == EstimateStatus.completed:
+        return PublicEstimateOut(
+            status="completed",
+            payout_min=estimate.payout_min,
+            payout_max=estimate.payout_max,
+        )
+    return PublicEstimateOut(status=estimate.status.value)
 
 
 @router.get("/intake/{session_id}/summary", response_model=SummaryOut)

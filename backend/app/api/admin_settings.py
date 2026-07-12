@@ -21,6 +21,8 @@ def _to_out(row: AppSettings) -> SettingsOut:
         from_email=row.from_email,
         from_name=row.from_name,
         app_base_url=row.app_base_url,
+        openrouter_api_key_set=bool(row.openrouter_api_key),
+        openrouter_model=row.openrouter_model,
     )
 
 
@@ -41,6 +43,9 @@ async def update_settings(data: SettingsIn, db: DbSession) -> SettingsOut:
     row.from_email = data.from_email
     row.from_name = data.from_name
     row.app_base_url = data.app_base_url.rstrip("/") if data.app_base_url else None
+    if data.openrouter_api_key is not None:
+        row.openrouter_api_key = data.openrouter_api_key or None
+    row.openrouter_model = data.openrouter_model
     await db.commit()
     await db.refresh(row)
     return _to_out(row)

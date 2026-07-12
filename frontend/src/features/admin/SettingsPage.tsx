@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { api, ApiError } from "../../api/client";
-import type { AppSettings, EmailLogEntry } from "../../api/types";
+import type { AppSettings, EmailLogEntry, OpenRouterModel } from "../../api/types";
 import { useActionError } from "./useActionError";
 import "./admin.css";
 
@@ -17,6 +17,8 @@ type FormState = {
   from_email: string;
   from_name: string;
   app_base_url: string;
+  openrouter_api_key: string;
+  openrouter_model: string;
 };
 
 function toForm(s: AppSettings): FormState {
@@ -29,7 +31,85 @@ function toForm(s: AppSettings): FormState {
     from_email: s.from_email ?? "",
     from_name: s.from_name,
     app_base_url: s.app_base_url ?? "",
+    openrouter_api_key: "",
+    openrouter_model: s.openrouter_model ?? "",
   };
+}
+
+function ModelSelect({
+  keySaved,
+  value,
+  onSelect,
+}: {
+  keySaved: boolean;
+  value: string;
+  onSelect: (id: string) => void;
+}) {
+  const [search, setSearch] = useState("");
+  const [open, setOpen] = useState(false);
+  const { data: models, isLoading, isError } = useQuery({
+    queryKey: ["admin", "ai", "models"],
+    queryFn: () => api<OpenRouterModel[]>("/admin/ai/models"),
+    enabled: keySaved,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const filtered = useMemo(() => {
+    const needle = search.trim().toLowerCase();
+    if (!models) return [];
+    if (!needle) return models;
+    return models.filter(
+      (m) => m.id.toLowerCase().includes(needle) || m.name.toLowerCase().includes(needle),
+    );
+  }, [models, search]);
+
+  if (!keySaved) {
+    return <p className="muted">Save an API key first to load the model list.</p>;
+  }
+  if (isLoading) return <p className="muted">Loading models…</p>;
+  if (isError) {
+    return <p className="error-text">Could not load models — check the API key.</p>;
+  }
+
+  return (
+    <div className="model-select">
+      <input
+        className="input"
+        value={open ? search : value || search}
+        placeholder="Search models — e.g. claude, gpt, gemini"
+        onFocus={() => setOpen(true)}
+        onChange={(e) => {
+          setSearch(e.target.value);
+          setOpen(true);
+        }}
+      />
+      {open && (
+        <div className="model-list">
+          {filtered.slice(0, 50).map((m) => (
+            <button
+              key={m.id}
+              type="button"
+              className={`model-row${m.id === value ? " selected" : ""}`}
+              onClick={() => {
+                onSelect(m.id);
+                setSearch("");
+                setOpen(false);
+              }}
+            >
+              <span className="model-name">{m.name}</span>
+              <span className="model-meta">
+                {m.id}
+                {m.context_length ? ` · ${Math.round(m.context_length / 1000)}k ctx` : ""}
+                {m.prompt_price ? ` · $${m.prompt_price}/M in` : ""}
+                {m.completion_price ? ` · $${m.completion_price}/M out` : ""}
+              </span>
+            </button>
+          ))}
+          {filtered.length === 0 && <p className="muted model-empty">No models match.</p>}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function SettingsPage() {
@@ -37,6 +117,7 @@ export function SettingsPage() {
   const [form, setForm] = useState<FormState | null>(null);
   const [testTo, setTestTo] = useState("");
   const [testResult, setTestResult] = useState<string | null>(null);
+  const [aiTestResult, setAiTestResult] = useState<string | null>(null);
   const { error, onError, clear } = useActionError();
 
   const { data } = useQuery({ queryKey: KEY, queryFn: () => api<AppSettings>("/admin/settings") });
@@ -63,6 +144,9 @@ export function SettingsPage() {
           from_email: f.from_email || null,
           from_name: f.from_name || "AcciAssist",
           app_base_url: f.app_base_url || null,
+          // Empty field means "keep current key"; type a value to change it.
+          openrouter_api_key: f.openrouter_api_key === "" ? null : f.openrouter_api_key,
+          openrouter_model: f.openrouter_model || null,
         },
       }),
     onSuccess: (saved) => {
@@ -83,6 +167,14 @@ export function SettingsPage() {
       ),
     onSettled: () =>
       queryClient.invalidateQueries({ queryKey: [...KEY, "email-log"] }),
+  });
+
+  const testAi = useMutation({
+    mutationFn: () =>
+      api<{ ok: boolean; model: string; reply: string }>("/admin/ai/test", { method: "POST" }),
+    onSuccess: (r) => setAiTestResult(`Connected — ${r.model} replied "${r.reply}".`),
+    onError: (e) =>
+      setAiTestResult(`Failed: ${e instanceof ApiError ? e.message : "unexpected error"}`),
   });
 
   if (!form) return <div className="page muted">Loading…</div>;
@@ -188,10 +280,61 @@ export function SettingsPage() {
             />
           </div>
         </div>
+        <h2 className="settings-section-title">Case estimates (OpenRouter)</h2>
+        <p className="muted">
+          Answers from completed questionnaires are sent to this model to estimate the
+          case cost and payout shown to clients and admins.
+        </p>
+        <div className="settings-grid">
+          <div className="field">
+            <label>OpenRouter API key</label>
+            <input
+              className="input"
+              type="password"
+              value={form.openrouter_api_key}
+              onChange={(e) => set({ openrouter_api_key: e.target.value })}
+              placeholder={data?.openrouter_api_key_set ? "•••••••• (saved)" : "sk-or-…"}
+              autoComplete="new-password"
+            />
+          </div>
+          <div className="field field-wide">
+            <label>Model</label>
+            <ModelSelect
+              keySaved={Boolean(data?.openrouter_api_key_set)}
+              value={form.openrouter_model}
+              onSelect={(id) => set({ openrouter_model: id })}
+            />
+            {form.openrouter_model && (
+              <p className="muted model-current">Selected: {form.openrouter_model}</p>
+            )}
+          </div>
+        </div>
         <button className="btn btn-primary" type="submit" disabled={save.isPending}>
           {save.isSuccess && !save.isPending ? "Saved ✓" : "Save settings"}
         </button>
       </form>
+
+      <div className="card settings-form">
+        <h2>Test AI connection</h2>
+        <p className="muted">Sends a one-line prompt to the selected model.</p>
+        <div className="inline-form">
+          <button
+            className="btn btn-outline"
+            disabled={testAi.isPending || !data?.openrouter_api_key_set}
+            onClick={() => {
+              setAiTestResult(null);
+              testAi.mutate();
+            }}
+          >
+            {testAi.isPending ? "Testing…" : "Run test"}
+          </button>
+        </div>
+        {aiTestResult && (
+          <p className={aiTestResult.startsWith("Failed") ? "error-text" : "success-text"}>
+            {aiTestResult}
+          </p>
+        )}
+      </div>
 
       <div className="card settings-form">
         <h2>Send a test email</h2>
