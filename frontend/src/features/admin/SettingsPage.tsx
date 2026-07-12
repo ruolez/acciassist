@@ -19,6 +19,10 @@ type FormState = {
   app_base_url: string;
   openrouter_api_key: string;
   openrouter_model: string;
+  comps_enabled: boolean;
+  comps_model: string;
+  sample_count: string;
+  contingency_fee_pct: string;
 };
 
 function toForm(s: AppSettings): FormState {
@@ -33,6 +37,10 @@ function toForm(s: AppSettings): FormState {
     app_base_url: s.app_base_url ?? "",
     openrouter_api_key: "",
     openrouter_model: s.openrouter_model ?? "",
+    comps_enabled: s.comps_enabled,
+    comps_model: s.comps_model ?? "",
+    sample_count: String(s.sample_count),
+    contingency_fee_pct: String(s.contingency_fee_pct),
   };
 }
 
@@ -147,6 +155,10 @@ export function SettingsPage() {
           // Empty field means "keep current key"; type a value to change it.
           openrouter_api_key: f.openrouter_api_key === "" ? null : f.openrouter_api_key,
           openrouter_model: f.openrouter_model || null,
+          comps_enabled: f.comps_enabled,
+          comps_model: f.comps_model || null,
+          sample_count: Number(f.sample_count) || 5,
+          contingency_fee_pct: Number(f.contingency_fee_pct) || 33.3,
         },
       }),
     onSuccess: (saved) => {
@@ -309,6 +321,56 @@ export function SettingsPage() {
             )}
           </div>
         </div>
+        <h2 className="settings-section-title">Estimate pipeline</h2>
+        <p className="muted">
+          The estimate runs as a multi-stage pipeline: the model extracts facts and judges
+          severity/liability; all dollar math happens in code using the jurisdiction rules.
+        </p>
+        <div className="settings-grid">
+          <div className="field">
+            <label>Judgment samples per estimate (1–9)</label>
+            <input
+              className="input"
+              type="number"
+              min={1}
+              max={9}
+              value={form.sample_count}
+              onChange={(e) => set({ sample_count: e.target.value })}
+            />
+          </div>
+          <div className="field">
+            <label>Assumed contingency fee % (10–50)</label>
+            <input
+              className="input"
+              type="number"
+              min={10}
+              max={50}
+              step={0.1}
+              value={form.contingency_fee_pct}
+              onChange={(e) => set({ contingency_fee_pct: e.target.value })}
+            />
+          </div>
+        </div>
+        <label className="checkbox">
+          <input
+            type="checkbox"
+            checked={form.comps_enabled}
+            onChange={(e) => set({ comps_enabled: e.target.checked })}
+          />
+          Search the web for comparable verdicts/settlements (extra cost and latency per
+          estimate)
+        </label>
+        {form.comps_enabled && (
+          <div className="field field-wide">
+            <label>Comps model (blank = main model + ":online" web plugin)</label>
+            <input
+              className="input"
+              value={form.comps_model}
+              onChange={(e) => set({ comps_model: e.target.value })}
+              placeholder='e.g. "perplexity/sonar" — must support web search'
+            />
+          </div>
+        )}
         <button className="btn btn-primary" type="submit" disabled={save.isPending}>
           {save.isSuccess && !save.isPending ? "Saved ✓" : "Save settings"}
         </button>

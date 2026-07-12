@@ -104,6 +104,94 @@ export type PublicEstimate = {
   status: "none" | "pending" | "completed" | "failed";
   payout_min: number | null;
   payout_max: number | null;
+  net_min: number | null;
+  net_max: number | null;
+  fee_pct_assumed: number | null;
+  drivers: string[] | null;
+  reducers: string[] | null;
+  improvements: string[] | null;
+  warnings: EstimateWarning[] | null;
+  gated: EstimateGate | null;
+  disclaimer: string | null;
+};
+
+export type EstimateWarning = {
+  code: string;
+  severity: string;
+  message: string;
+  deadline: string | null;
+};
+
+export type EstimateGate = {
+  code: string;
+  title: string;
+  explanation: string;
+};
+
+/** Assembled Stage-6 presentation payload stored on the estimate row. */
+export type EstimateResult = {
+  gated: EstimateGate | null;
+  gross_min: number;
+  gross_max: number;
+  net_min: number;
+  net_max: number;
+  case_cost_min: number;
+  case_cost_max: number;
+  fee_pct: number | null;
+  width: number | null;
+  confidence: string;
+  summary: string | null;
+  drivers: string[];
+  reducers: string[];
+  improvements: string[];
+  warnings: EstimateWarning[];
+  disclaimer: string;
+};
+
+export type StageStatus = {
+  status: "completed" | "failed" | "skipped";
+  ms?: number;
+  error?: string;
+};
+
+export type JudgmentSample = {
+  severity_tier: number;
+  tier_rationale: string;
+  swing_fact: string;
+  defendant_liability_pct: number;
+  liability_rationale: string;
+};
+
+export type EstimateInternals = {
+  extraction?: Record<string, unknown>;
+  jurisdiction?: Record<string, unknown>;
+  comps?: { model: string; comps: CompEntry[] };
+  samples?: {
+    requested: number;
+    valid: JudgmentSample[];
+    errors: string[];
+    median_tier?: number;
+    median_liability_pct?: number;
+    tier_spread?: number;
+    liability_spread?: number;
+  };
+  adversarial?: {
+    lowest_defensible_pct_of_specials: number;
+    low_rationale: string;
+    attack_arguments: { category: string; argument: string }[];
+  };
+  assembly_trace?: Record<string, unknown>;
+};
+
+export type CompEntry = {
+  description: string;
+  injury_match: string;
+  venue: string;
+  amount: number;
+  year: number | null;
+  kind: string;
+  source_url: string | null;
+  source_quality: string;
 };
 
 export type CaseEstimateAdmin = {
@@ -112,9 +200,16 @@ export type CaseEstimateAdmin = {
   payout_max: number | null;
   case_cost_min: number | null;
   case_cost_max: number | null;
+  gross_min: number | null;
+  gross_max: number | null;
+  net_min: number | null;
+  net_max: number | null;
   confidence: string | null;
   reasoning: string | null;
   missing_info: string[] | null;
+  result: EstimateResult | null;
+  internals: EstimateInternals | null;
+  stage_status: Record<string, StageStatus> | null;
   model: string | null;
   error: string | null;
   updated_at: string;
@@ -241,6 +336,10 @@ export type AppSettings = {
   app_base_url: string | null;
   openrouter_api_key_set: boolean;
   openrouter_model: string | null;
+  comps_enabled: boolean;
+  comps_model: string | null;
+  sample_count: number;
+  contingency_fee_pct: number;
 };
 
 export type ComparativeRule = "pure" | "modified_50" | "modified_51" | "contributory";

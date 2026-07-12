@@ -3,105 +3,11 @@ import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { api } from "../../api/client";
-import type { AdminCaseDetail, CaseEstimateAdmin, CaseStage } from "../../api/types";
+import type { AdminCaseDetail, CaseStage } from "../../api/types";
 import { CASE_STAGES, STAGE_LABELS } from "../account/stages";
+import { PipelineEstimateCard } from "./PipelineEstimateCard";
 import { useActionError } from "./useActionError";
 import "./admin.css";
-
-function formatUsdRange(min: number | null, max: number | null): string {
-  if (min === null && max === null) return "—";
-  const fmt = (n: number) => `$${n.toLocaleString()}`;
-  if (min !== null && max !== null) return `${fmt(min)} – ${fmt(max)}`;
-  return fmt((min ?? max)!);
-}
-
-function EstimateCard({
-  sessionId,
-  initial,
-  onError,
-}: {
-  sessionId: string;
-  initial: CaseEstimateAdmin | null;
-  onError: (e: unknown, fallback: string) => void;
-}) {
-  const queryClient = useQueryClient();
-  const KEY = ["admin", "ai", "estimate", sessionId];
-  const { data } = useQuery({
-    queryKey: KEY,
-    queryFn: () => api<CaseEstimateAdmin | null>(`/admin/ai/sessions/${sessionId}/estimate`),
-    initialData: initial,
-    refetchInterval: (q) => (q.state.data?.status === "pending" ? 2000 : false),
-  });
-
-  const rerun = useMutation({
-    mutationFn: () =>
-      api<CaseEstimateAdmin>(`/admin/ai/sessions/${sessionId}/estimate/rerun`, {
-        method: "POST",
-      }),
-    onSuccess: (pending) => queryClient.setQueryData(KEY, pending),
-    onError: (e) => onError(e, "Could not re-run the estimate"),
-  });
-
-  return (
-    <div className="card estimate-admin">
-      <div className="estimate-admin-head">
-        <h2>Estimate</h2>
-        <button
-          className="btn btn-outline"
-          disabled={rerun.isPending || data?.status === "pending"}
-          onClick={() => rerun.mutate()}
-        >
-          {data?.status === "pending" ? "Running…" : "Re-run estimate"}
-        </button>
-      </div>
-      {!data && <p className="muted">No estimate yet — re-run to generate one.</p>}
-      {data?.status === "pending" && <p className="muted">Calculating…</p>}
-      {data?.status === "failed" && (
-        <p className="error-text">Estimate failed: {data.error ?? "unknown error"}</p>
-      )}
-      {data?.status === "completed" && (
-        <>
-          <div className="estimate-admin-grid">
-            <div>
-              <span className="muted">Payout</span>
-              <p className="estimate-admin-figure">
-                {formatUsdRange(data.payout_min, data.payout_max)}
-              </p>
-            </div>
-            <div>
-              <span className="muted">Case cost</span>
-              <p className="estimate-admin-figure">
-                {formatUsdRange(data.case_cost_min, data.case_cost_max)}
-              </p>
-            </div>
-            <div>
-              <span className="muted">Confidence</span>
-              <p>
-                <span className={`badge confidence-${data.confidence ?? "low"}`}>
-                  {data.confidence ?? "—"}
-                </span>
-              </p>
-            </div>
-          </div>
-          {data.reasoning && <p className="estimate-admin-reasoning">{data.reasoning}</p>}
-          {data.missing_info && data.missing_info.length > 0 && (
-            <div>
-              <span className="muted">Missing information</span>
-              <ul className="estimate-admin-missing">
-                {data.missing_info.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-          <p className="muted estimate-admin-meta">
-            {data.model} · {new Date(data.updated_at).toLocaleString()}
-          </p>
-        </>
-      )}
-    </div>
-  );
-}
 
 export function CaseDetailAdminPage() {
   const { caseId } = useParams();
@@ -230,7 +136,7 @@ export function CaseDetailAdminPage() {
       </div>
 
       {data.intake_session_id && (
-        <EstimateCard
+        <PipelineEstimateCard
           sessionId={data.intake_session_id}
           initial={data.estimate}
           onError={onError}

@@ -826,3 +826,71 @@
 .jurisdiction-editor .field {
   width: 100%;
 }
+
+/* ── Estimate pipeline card ────────────────────────────────────────── */
+.stage-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+.stage-chip {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--outline);
+  color: var(--text-secondary);
+  background: var(--background);
+  cursor: default;
+}
+.stage-chip.stage-completed {
+  background: #e7f4ea;
+  color: var(--success, #1e8e3e);
+  border-color: #c6e5cd;
+}
+.stage-chip.stage-failed {
+  background: #fdecea;
+  color: var(--error, #d93025);
+  border-color: #f6c9c4;
+}
+.pipeline-section {
+  border-top: 1px solid var(--outline);
+  padding: var(--space-2) 0;
+}
+.pipeline-section summary {
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+.pipeline-section-body {
+  padding: var(--space-3) 0 var(--space-2);
+  font-size: 0.9rem;
+}
+.pipeline-section-body ul {
+  margin: var(--space-2) 0 var(--space-3);
+  padding-left: 1.2em;
+}
+.pipeline-json {
+  max-height: 360px;
+  overflow: auto;
+  background: var(--background);
+  border: 1px solid var(--outline);
+  border-radius: 8px;
+  padding: var(--space-3);
+  font-size: 0.78rem;
+}
+.samples-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+.samples-table th,
+.samples-table td {
+  text-align: left;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--outline);
+}
+.badge.comp-published_verdict { background: #e7f4ea; color: var(--success, #1e8e3e); }
+.badge.comp-news { background: var(--surface-tint); color: var(--text-secondary); }
+.badge.comp-firm_marketing { background: #fef7e0; color: #5f4b00; }
