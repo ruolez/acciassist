@@ -429,6 +429,11 @@ class AppSettings(Base):
     app_base_url: Mapped[str | None] = mapped_column(String(255), nullable=True)
     openrouter_api_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
     openrouter_model: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # Estimate-pipeline knobs. comps_model NULL → main model + ":online".
+    comps_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    comps_model: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    sample_count: Mapped[int] = mapped_column(Integer, nullable=False, default=5)
+    contingency_fee_pct: Mapped[float] = mapped_column(Float, nullable=False, default=33.3)
 
 
 class EmailLog(Base):

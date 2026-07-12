@@ -291,6 +291,10 @@ class SettingsOut(ORMModel):
     app_base_url: str | None
     openrouter_api_key_set: bool
     openrouter_model: str | None
+    comps_enabled: bool
+    comps_model: str | None
+    sample_count: int
+    contingency_fee_pct: float
 
 
 class SettingsIn(BaseModel):
@@ -306,6 +310,10 @@ class SettingsIn(BaseModel):
     # None/omitted keeps the stored key; "" clears it.
     openrouter_api_key: str | None = Field(default=None, max_length=255)
     openrouter_model: str | None = Field(default=None, max_length=255)
+    comps_enabled: bool = False
+    comps_model: str | None = Field(default=None, max_length=255)
+    sample_count: int = Field(default=5, ge=1, le=9)
+    contingency_fee_pct: float = Field(default=33.3, ge=10, le=50)
 
 
 class TestEmailIn(BaseModel):
