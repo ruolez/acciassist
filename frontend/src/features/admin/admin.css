@@ -790,3 +790,39 @@
   background: var(--background, #f8f9fa);
   border-radius: 8px;
 }
+
+/* ── Jurisdiction rules ────────────────────────────────────────────── */
+.jurisdiction-warning {
+  background: #fef7e0;
+  border-color: #f9ab00;
+  color: #5f4b00;
+  font-size: 0.9rem;
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-3);
+}
+.jurisdiction-summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  font-size: 0.9rem;
+}
+.jurisdiction-state {
+  min-width: 180px;
+}
+.jurisdiction-summary .btn {
+  margin-left: auto;
+}
+.jurisdiction-editor {
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--outline);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  align-items: flex-start;
+}
+.jurisdiction-editor .settings-grid,
+.jurisdiction-editor .field {
+  width: 100%;
+}

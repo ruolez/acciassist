@@ -9,6 +9,7 @@ const NAV = [
   { to: "/admin/injury-types", label: "Injury Types" },
   { to: "/admin/submissions", label: "Submissions" },
   { to: "/admin/cases", label: "Cases" },
+  { to: "/admin/jurisdictions", label: "Jurisdictions" },
   { to: "/admin/admins", label: "Admins" },
   { to: "/admin/settings", label: "Settings" },
 ];

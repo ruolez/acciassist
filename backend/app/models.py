@@ -6,6 +6,7 @@ from sqlalchemy import (
     Boolean,
     DateTime,
     Enum,
+    Float,
     ForeignKey,
     Integer,
     String,
@@ -384,6 +385,31 @@ class CaseUpdate(Base):
 
     case: Mapped["Case"] = relationship(back_populates="updates")
     admin: Mapped["AdminUser | None"] = relationship()
+
+
+class JurisdictionRule(Base):
+    """Per-state legal parameters for the deterministic side of case
+    estimation (comparative-negligence rule, SOL, caps). Fixed 51-row universe
+    (states + DC) seeded from public sources; admins edit values in place and
+    clear ``needs_review`` once an attorney has verified a row."""
+
+    __tablename__ = "jurisdiction_rules"
+
+    state_code: Mapped[str] = mapped_column(String(2), primary_key=True)
+    state_name: Mapped[str] = mapped_column(String(50), nullable=False)
+    # 'pure' | 'modified_50' | 'modified_51' | 'contributory'
+    comparative_rule: Mapped[str] = mapped_column(String(20), nullable=False)
+    no_fault: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    pip_threshold_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    sol_years_pi: Mapped[float] = mapped_column(Float, nullable=False)
+    sol_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    noneconomic_cap: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    cap_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    collateral_source_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    needs_review: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
 
 
 class AppSettings(Base):

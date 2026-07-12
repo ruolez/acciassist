@@ -251,6 +251,34 @@ class IntakeSessionDetailOut(IntakeSessionOut):
     estimate: CaseEstimateAdminOut | None = None
 
 
+# ── Admin: jurisdiction rules ──────────────────────────────────────────
+class JurisdictionRuleOut(ORMModel):
+    state_code: str
+    state_name: str
+    comparative_rule: Literal["pure", "modified_50", "modified_51", "contributory"]
+    no_fault: bool
+    pip_threshold_note: str | None
+    sol_years_pi: float
+    sol_note: str | None
+    noneconomic_cap: int | None
+    cap_note: str | None
+    collateral_source_note: str | None
+    needs_review: bool
+    updated_at: datetime
+
+
+class JurisdictionRuleIn(BaseModel):
+    comparative_rule: Literal["pure", "modified_50", "modified_51", "contributory"]
+    no_fault: bool = False
+    pip_threshold_note: str | None = Field(default=None, max_length=2000)
+    sol_years_pi: float = Field(gt=0, le=20)
+    sol_note: str | None = Field(default=None, max_length=2000)
+    noneconomic_cap: int | None = Field(default=None, ge=0)
+    cap_note: str | None = Field(default=None, max_length=2000)
+    collateral_source_note: str | None = Field(default=None, max_length=2000)
+    needs_review: bool = True
+
+
 # ── Admin: settings ────────────────────────────────────────────────────
 class SettingsOut(ORMModel):
     smtp_host: str | None

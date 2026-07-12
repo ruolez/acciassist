@@ -17,6 +17,7 @@ from app.models import (
     SummaryTemplate,
 )
 from app.security import hash_password
+from app.services.estimate_pipeline.jurisdiction_data import seed_jurisdiction_defaults
 
 # Each tuple: (slug, type, prompt, help_text, is_required, page_group, config, options)
 # options is a list of (label, value).
@@ -214,6 +215,8 @@ async def main() -> None:
     async with SessionLocal() as db:
         await _seed_admin(db)
         await _seed_auto_accident(db)
+        inserted = await seed_jurisdiction_defaults(db)
+        print(f"Jurisdiction rules: inserted {inserted} missing state rows")
         await db.commit()
     print("Seed complete.")
 

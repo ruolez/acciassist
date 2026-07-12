@@ -243,6 +243,23 @@ export type AppSettings = {
   openrouter_model: string | null;
 };
 
+export type ComparativeRule = "pure" | "modified_50" | "modified_51" | "contributory";
+
+export type JurisdictionRule = {
+  state_code: string;
+  state_name: string;
+  comparative_rule: ComparativeRule;
+  no_fault: boolean;
+  pip_threshold_note: string | null;
+  sol_years_pi: number;
+  sol_note: string | null;
+  noneconomic_cap: number | null;
+  cap_note: string | null;
+  collateral_source_note: string | null;
+  needs_review: boolean;
+  updated_at: string;
+};
+
 export type EmailLogEntry = {
   id: number;
   to_email: string;

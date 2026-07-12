@@ -15,5 +15,7 @@ select = ["E", "F", "I", "UP", "B"]
 [tool.ruff.lint.per-file-ignores]
 # Seed contains long human-readable template prose inside string literals.
 "app/seed.py" = ["E501"]
+# Per-state legal notes are long human-readable string literals.
+"app/services/estimate_pipeline/jurisdiction_data.py" = ["E501"]
 # Email HTML lives in string literals with long inline-CSS lines.
 "app/services/email_templates.py" = ["E501"]
