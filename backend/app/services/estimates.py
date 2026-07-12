@@ -228,10 +228,14 @@ class EstimateResult(BaseModel):
         return self
 
 
+_THINK_BLOCK = re.compile(r"<think(?:ing)?>.*?</think(?:ing)?>", re.DOTALL | re.IGNORECASE)
+
+
 def _extract_json_object(content: str) -> dict:
-    """Pull a JSON object out of a model reply, tolerating code fences and
-    surrounding prose (for models without structured-output support)."""
-    text = content.strip()
+    """Pull a JSON object out of a model reply, tolerating code fences,
+    surrounding prose, and reasoning-model <think> blocks (whose braces would
+    otherwise corrupt the first-{...}-to-last-} extraction)."""
+    text = _THINK_BLOCK.sub("", content).strip()
     if text.startswith("```"):
         text = re.sub(r"^```[a-zA-Z]*\s*", "", text)
         text = re.sub(r"\s*```$", "", text)
@@ -245,17 +249,7 @@ def _extract_json_object(content: str) -> dict:
 
 
 def parse_estimate_content(content: str) -> EstimateResult:
-    text = content.strip()
-    if text.startswith("```"):
-        text = re.sub(r"^```[a-zA-Z]*\s*", "", text)
-        text = re.sub(r"\s*```$", "", text)
-    try:
-        return EstimateResult.model_validate(json.loads(text))
-    except (json.JSONDecodeError, ValidationError):
-        match = _JSON_BLOCK.search(text)
-        if match is None:
-            raise ValueError("no JSON object found in model response") from None
-        return EstimateResult.model_validate(json.loads(match.group(0)))
+    return EstimateResult.model_validate(_extract_json_object(content))
 
 
 async def build_qa_pairs(db: AsyncSession, session: IntakeSession) -> list[tuple[str, str]]:
@@ -609,6 +603,12 @@ async def generate_advice(db: AsyncSession, injury_type: InjuryType) -> Estimate
     try:
         raw = parse_advice_content(content)
     except (ValueError, ValidationError) as exc:
+        logger.warning(
+            "advice reply from %s could not be parsed (%s); reply started with: %.2000s",
+            app_settings.openrouter_model,
+            exc,
+            content,
+        )
         raise AppError(
             502,
             "ai_invalid_response",

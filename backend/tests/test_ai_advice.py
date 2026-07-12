@@ -93,6 +93,24 @@ async def test_advice_persists_and_regenerate_overwrites(
     assert regenerated["proposals"] == []
 
 
+async def test_think_block_reply_parses(admin_client, session_factory, monkeypatch):
+    """Reasoning models (Qwen, DeepSeek) prepend <think> blocks whose braces
+    must not corrupt JSON extraction."""
+    await seed_ai_settings(session_factory)
+    itid = await _injury_type_with_question(admin_client)
+
+    async def _thinking(*args, **kwargs):
+        return (
+            "<think>The user wants {json}. Let me consider {a: 1} carefully.</think>\n"
+            + advice_reply("Thought-through overview", [NEW_QUESTION])
+        )
+
+    monkeypatch.setattr("app.services.openrouter.chat_completion", _thinking)
+    created = (await admin_client.post(f"/api/admin/ai/injury-types/{itid}/advice")).json()
+    assert created["content"] == "Thought-through overview"
+    assert len(created["proposals"]) == 1
+
+
 async def test_fenced_reply_parses(admin_client, session_factory, monkeypatch):
     await seed_ai_settings(session_factory)
     itid = await _injury_type_with_question(admin_client)

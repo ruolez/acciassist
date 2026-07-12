@@ -116,6 +116,7 @@ async def test_chat_completion_returns_content_and_sends_schema(monkeypatch):
     body = fake.requests[0][2]
     assert body["response_format"]["json_schema"]["name"] == "thing"
     assert body["response_format"]["json_schema"]["strict"] is True
+    assert body["provider"] == {"require_parameters": True}
 
 
 async def test_chat_completion_retries_without_rejected_schema(monkeypatch):
@@ -133,6 +134,41 @@ async def test_chat_completion_retries_without_rejected_schema(monkeypatch):
     assert content == "plain text"
     assert "response_format" in fake.requests[0][2]
     assert "response_format" not in fake.requests[1][2]
+    assert "provider" not in fake.requests[1][2]
+
+
+async def test_chat_completion_retries_when_no_provider_supports_parameters(monkeypatch):
+    fake = FakeClient(
+        [
+            FakeResponse(404, text="No endpoints found that support the requested parameters"),
+            FakeResponse(200, {"choices": [{"message": {"content": "plain text"}}]}),
+        ]
+    )
+    _install(monkeypatch, fake)
+    content = await openrouter.chat_completion(
+        "sk-or-test", "vendor/model-a", [{"role": "user", "content": "hi"}],
+        json_schema={"type": "object"},
+    )
+    assert content == "plain text"
+    assert "provider" not in fake.requests[1][2]
+
+
+async def test_chat_completion_truncated_reply_is_an_error(monkeypatch):
+    fake = FakeClient(
+        [
+            FakeResponse(
+                200,
+                {"choices": [{"finish_reason": "length",
+                              "message": {"content": '{"overview": "cut of'}}]},
+            )
+        ]
+    )
+    _install(monkeypatch, fake)
+    with pytest.raises(OpenRouterError) as exc:
+        await openrouter.chat_completion(
+            "sk-or-test", "vendor/model-b", [{"role": "user", "content": "hi"}]
+        )
+    assert exc.value.code == "truncated"
 
 
 async def test_chat_completion_error_in_200_body(monkeypatch):

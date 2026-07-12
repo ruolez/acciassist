@@ -102,9 +102,13 @@ def clear_models_cache() -> None:
 
 def _structured_output_rejected(status: int, body: str) -> bool:
     lowered = body.lower()
-    return status in (400, 404, 422) and (
-        "response_format" in lowered or "structured" in lowered or "json_schema" in lowered
-    )
+    if status not in (400, 404, 422):
+        return False
+    if "response_format" in lowered or "structured" in lowered or "json_schema" in lowered:
+        return True
+    # OpenRouter's routing error when require_parameters finds no provider,
+    # e.g. "No endpoints found that support the requested parameters".
+    return "parameter" in lowered and ("endpoint" in lowered or "support" in lowered)
 
 
 async def _post_completion(client: httpx.AsyncClient, headers: dict, body: dict) -> httpx.Response:
@@ -139,6 +143,10 @@ async def chat_completion(
             "type": "json_schema",
             "json_schema": {"name": schema_name, "strict": True, "schema": json_schema},
         }
+        # Route only to providers that actually enforce response_format —
+        # some hosts accept the parameter and silently ignore it, which
+        # surfaces downstream as an unparseable reply.
+        body["provider"] = {"require_parameters": True}
     async with httpx.AsyncClient(timeout=_COMPLETION_TIMEOUT) as client:
         resp = await _post_completion(client, headers, body)
         if (
@@ -147,6 +155,7 @@ async def chat_completion(
             and _structured_output_rejected(resp.status_code, resp.text)
         ):
             body.pop("response_format")
+            body.pop("provider", None)
             resp = await _post_completion(client, headers, body)
     if resp.status_code != 200:
         raise _error_from_status(resp.status_code, resp.text)
@@ -159,6 +168,12 @@ async def chat_completion(
         err = data["error"]
         raise _error_from_status(int(err.get("code") or 500), str(err.get("message") or ""))
     choices = data.get("choices") or []
+    if choices and choices[0].get("finish_reason") == "length":
+        raise OpenRouterError(
+            "truncated",
+            "The model's reply was cut off before it finished; "
+            "try a model with a larger output limit",
+        )
     content = (choices[0].get("message") or {}).get("content") if choices else None
     if not content:
         raise OpenRouterError("empty_response", "The AI model returned an empty response")
