@@ -1,4 +1,4 @@
-import type { AnswerValue, Question } from "../../api/types";
+import type { AnswerValue, IntakeStart, Question } from "../../api/types";
 
 /** True when a value counts as a real answer for its question type. */
 export function isAnswered(question: Question, value: AnswerValue): boolean {
@@ -62,4 +62,36 @@ export function isPageComplete(
 export function progressPercent(pageIndex: number, totalPages: number): number {
   if (totalPages <= 0) return 0;
   return Math.round((pageIndex / totalPages) * 100);
+}
+
+/** Fit cached wizard progress to the server's current questionnaire: drop
+ * answers for questions that were deleted or whose selected option values no
+ * longer exist (the admin may edit questions while a session is cached), and
+ * clamp the page index into range. */
+export function reconcileStoredState(
+  cachedAnswers: Record<number, AnswerValue>,
+  cachedPageIndex: number,
+  fresh: IntakeStart,
+): { answers: Record<number, AnswerValue>; pageIndex: number } {
+  const questionById = new Map(
+    fresh.pages.flatMap((p) => p.questions).map((q) => [q.id, q]),
+  );
+  const answers: Record<number, AnswerValue> = {};
+  for (const [key, value] of Object.entries(cachedAnswers)) {
+    const question = questionById.get(Number(key));
+    if (!question) continue;
+    if (question.type === "single_choice") {
+      if (!question.options.some((o) => o.value === value)) continue;
+    }
+    if (question.type === "multi_choice") {
+      if (!Array.isArray(value)) continue;
+      const kept = value.filter((v) => question.options.some((o) => o.value === v));
+      if (kept.length === 0) continue;
+      answers[question.id] = kept;
+      continue;
+    }
+    answers[question.id] = value;
+  }
+  const pageIndex = Math.min(Math.max(cachedPageIndex, 0), fresh.total_pages - 1);
+  return { answers, pageIndex };
 }

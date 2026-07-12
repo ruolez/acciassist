@@ -120,6 +120,28 @@ class TestPublicIntakeFlow:
         ).json()
         assert detail["answers"] == [{"question_id": q["id"], "value": "Patricia"}]
 
+    async def test_session_pages_reflect_questions_added_after_start(self, admin_client):
+        itid = await _create_published_injury_type(admin_client)
+        await _add_question(admin_client, itid, type="yes_no", prompt="Original?")
+        start = (
+            await admin_client.post("/api/intake/start", json={"injury_type_id": itid})
+        ).json()
+        await _add_question(admin_client, itid, type="number", prompt="Added later?")
+
+        fresh = (
+            await admin_client.get(f"/api/intake/{start['session_id']}/pages")
+        ).json()
+        assert fresh["session_id"] == start["session_id"]
+        assert fresh["total_pages"] == 2
+        prompts = [q["prompt"] for p in fresh["pages"] for q in p["questions"]]
+        assert prompts == ["Original?", "Added later?"]
+
+    async def test_session_pages_unknown_session_404(self, admin_client):
+        resp = await admin_client.get(
+            "/api/intake/00000000-0000-0000-0000-000000000000/pages"
+        )
+        assert resp.status_code == 404
+
     async def test_lead_capture_appears_in_admin_list(self, admin_client):
         itid = await _create_published_injury_type(admin_client)
         start = (

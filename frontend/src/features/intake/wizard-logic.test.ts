@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import type { Question, QuestionType } from "../../api/types";
-import { boundsError, isAnswered, isPageComplete, progressPercent } from "./wizard-logic";
+import type { IntakeStart, Question, QuestionType } from "../../api/types";
+import {
+  boundsError,
+  isAnswered,
+  isPageComplete,
+  progressPercent,
+  reconcileStoredState,
+} from "./wizard-logic";
 
 function makeQuestion(type: QuestionType, overrides: Partial<Question> = {}): Question {
   return {
@@ -115,5 +121,51 @@ describe("progressPercent", () => {
 
   it("returns 0 when there are no pages", () => {
     expect(progressPercent(0, 0)).toBe(0);
+  });
+});
+
+describe("reconcileStoredState", () => {
+  const opt = (value: string) => ({ id: 0, label: value, value, display_order: 0 });
+  const freshStart = (questions: Question[]): IntakeStart => ({
+    session_id: "s",
+    injury_type: {
+      id: 1,
+      slug: "t",
+      name: "T",
+      description: null,
+      display_order: 0,
+      is_published: true,
+    },
+    pages: questions.map((q, i) => ({ page_index: i, questions: [q] })),
+    total_pages: questions.length,
+  });
+
+  it("drops answers for questions that no longer exist", () => {
+    const fresh = freshStart([makeQuestion("yes_no", { id: 1 })]);
+    const result = reconcileStoredState({ 1: true, 99: "gone" }, 0, fresh);
+    expect(result.answers).toEqual({ 1: true });
+  });
+
+  it("drops a single_choice answer whose option value was removed", () => {
+    const q = makeQuestion("single_choice", { id: 1, options: [opt("store"), opt("home")] });
+    const result = reconcileStoredState({ 1: "sidewalk" }, 0, freshStart([q]));
+    expect(result.answers).toEqual({});
+  });
+
+  it("filters multi_choice answers to surviving option values", () => {
+    const q = makeQuestion("multi_choice", { id: 1, options: [opt("neck"), opt("back")] });
+    const result = reconcileStoredState({ 1: ["neck", "knee"] }, 0, freshStart([q]));
+    expect(result.answers).toEqual({ 1: ["neck"] });
+  });
+
+  it("drops a multi_choice answer when no selected value survives", () => {
+    const q = makeQuestion("multi_choice", { id: 1, options: [opt("neck")] });
+    const result = reconcileStoredState({ 1: ["knee"] }, 0, freshStart([q]));
+    expect(result.answers).toEqual({});
+  });
+
+  it("clamps a page index that is beyond the current page count", () => {
+    const fresh = freshStart([makeQuestion("yes_no", { id: 1 })]);
+    expect(reconcileStoredState({}, 5, fresh).pageIndex).toBe(0);
   });
 });

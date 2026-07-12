@@ -2,10 +2,15 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { Logo } from "../../components/Logo";
-import { api } from "../../api/client";
+import { api, ApiError } from "../../api/client";
 import type { AnswerValue, IntakeStart } from "../../api/types";
 import { QuestionRenderer } from "./QuestionRenderer";
-import { boundsError, isPageComplete, progressPercent } from "./wizard-logic";
+import {
+  boundsError,
+  isPageComplete,
+  progressPercent,
+  reconcileStoredState,
+} from "./wizard-logic";
 import "./intake.css";
 
 type Stored = {
@@ -26,24 +31,45 @@ export function IntakeWizard() {
   const [busy, setBusy] = useState(false);
   const initialized = useRef(false);
 
-  // Start a fresh session or resume one stored in localStorage.
+  // Start a fresh session or resume one stored in localStorage. A cached
+  // snapshot may be stale — the admin can edit questions at any time — so it
+  // is always revalidated against the server before use.
   useEffect(() => {
     if (!injuryTypeId || initialized.current) return;
     initialized.current = true;
+
+    const startFresh = () =>
+      api<IntakeStart>("/intake/start", {
+        method: "POST",
+        body: { injury_type_id: Number(injuryTypeId) },
+      })
+        .then((data) => {
+          setStart(data);
+          setAnswers({});
+          setPageIndex(0);
+        })
+        .catch(() =>
+          setError("We couldn't start your questionnaire. Please go back and retry."),
+        );
+
     const cached = localStorage.getItem(storageKey(injuryTypeId));
-    if (cached) {
-      const parsed: Stored = JSON.parse(cached);
-      setStart(parsed.start);
-      setAnswers(parsed.answers);
-      setPageIndex(parsed.pageIndex);
+    if (!cached) {
+      startFresh();
       return;
     }
-    api<IntakeStart>("/intake/start", {
-      method: "POST",
-      body: { injury_type_id: Number(injuryTypeId) },
-    })
-      .then((data) => setStart(data))
-      .catch(() => setError("We couldn't start your questionnaire. Please go back and retry."));
+    const parsed: Stored = JSON.parse(cached);
+    api<IntakeStart>(`/intake/${parsed.start.session_id}/pages`)
+      .then((fresh) => {
+        const fitted = reconcileStoredState(parsed.answers, parsed.pageIndex, fresh);
+        setStart(fresh);
+        setAnswers(fitted.answers);
+        setPageIndex(fitted.pageIndex);
+      })
+      .catch(() => {
+        // Cached session is gone or unusable — abandon it and start over.
+        localStorage.removeItem(storageKey(injuryTypeId));
+        startFresh();
+      });
   }, [injuryTypeId]);
 
   // Persist progress so a reload resumes where the patient left off.
@@ -101,8 +127,18 @@ export function IntakeWizard() {
       } else {
         setPageIndex((i) => i + 1);
       }
-    } catch {
-      setError("We couldn't save your answer. Please try again.");
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 422) {
+        // The questionnaire changed under us (e.g. a question was edited or
+        // removed). Drop the stale snapshot and reload into a clean state.
+        localStorage.removeItem(storageKey(injuryTypeId!));
+        setError(
+          "This questionnaire was just updated and your earlier answers no longer fit. " +
+            "Please start again — it only takes a moment.",
+        );
+      } else {
+        setError("We couldn't save your answer. Please try again.");
+      }
     } finally {
       setBusy(false);
     }

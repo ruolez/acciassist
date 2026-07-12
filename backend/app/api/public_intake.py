@@ -149,16 +149,9 @@ async def public_injury_types(db: DbSession) -> list[InjuryType]:
     return list(rows)
 
 
-@router.post(
-    "/intake/start", response_model=IntakeStartOut, dependencies=[Depends(_intake_start_limit)]
-)
-async def start_intake(data: IntakeStartIn, db: DbSession) -> IntakeStartOut:
-    injury_type = await _published_injury_type(db, data.injury_type_id)
-    session = IntakeSession(injury_type_id=injury_type.id)
-    db.add(session)
-    await db.commit()
-    await db.refresh(session)
-
+async def _start_payload(
+    db: DbSession, injury_type: InjuryType, session: IntakeSession
+) -> IntakeStartOut:
     questions = await _questions_for(db, injury_type.id)
     pages = [
         IntakePage(
@@ -173,6 +166,29 @@ async def start_intake(data: IntakeStartIn, db: DbSession) -> IntakeStartOut:
         pages=pages,
         total_pages=len(pages),
     )
+
+
+@router.post(
+    "/intake/start", response_model=IntakeStartOut, dependencies=[Depends(_intake_start_limit)]
+)
+async def start_intake(data: IntakeStartIn, db: DbSession) -> IntakeStartOut:
+    injury_type = await _published_injury_type(db, data.injury_type_id)
+    session = IntakeSession(injury_type_id=injury_type.id)
+    db.add(session)
+    await db.commit()
+    await db.refresh(session)
+    return await _start_payload(db, injury_type, session)
+
+
+@router.get("/intake/{session_id}/pages", response_model=IntakeStartOut)
+async def get_session_pages(session_id: uuid.UUID, db: DbSession) -> IntakeStartOut:
+    """Current questionnaire for an existing session, so a resumed wizard can
+    refresh a cached snapshot after the admin edits questions."""
+    session = await _active_session(db, session_id)
+    injury_type = await db.get(InjuryType, session.injury_type_id)
+    if injury_type is None or not injury_type.is_published:
+        raise AppError(404, "not_found", "Injury type not available")
+    return await _start_payload(db, injury_type, session)
 
 
 @router.post("/intake/{session_id}/answers", status_code=204)
