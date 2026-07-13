@@ -483,3 +483,30 @@
     animation: none;
   }
 }
+
+/* ── Client login entry points ─────────────────────────────────────── */
+.topbar-login {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--navy);
+  text-decoration: none;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--outline-strong);
+  border-radius: var(--radius-pill);
+  transition: border-color 0.12s ease, background 0.12s ease;
+}
+.topbar-login:hover {
+  border-color: var(--navy);
+  background: var(--navy-soft);
+}
+.foot-links {
+  margin-left: auto;
+}
+.foot-links a {
+  color: var(--navy);
+  font-weight: 600;
+  text-decoration: none;
+}
+.foot-links a:hover {
+  text-decoration: underline;
+}

@@ -1,9 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 import { Logo } from "../../components/Logo";
 import { api } from "../../api/client";
-import type { InjuryType } from "../../api/types";
+import type { InjuryType, User } from "../../api/types";
 import "./landing.css";
 
 const REASSURANCE = ["No login required", "About 3 minutes", "Private & secure"];
@@ -76,6 +76,14 @@ export function LandingPage() {
     queryKey: ["public", "injury-types"],
     queryFn: () => api<InjuryType[]>("/injury-types"),
   });
+  // Signed-in clients get "My case" instead of "Client login"; everyone else
+  // 401s here, which is expected and cached.
+  const { data: me } = useQuery({
+    queryKey: ["user", "me"],
+    queryFn: () => api<User>("/auth/me"),
+    retry: false,
+    staleTime: 60_000,
+  });
 
   const scrollToBegin = () => {
     document.getElementById("begin")?.scrollIntoView({ behavior: "smooth" });
@@ -87,6 +95,9 @@ export function LandingPage() {
         <Logo size={42} withWordmark to="/" />
         <nav className="topbar-nav">
           <span className="topbar-tag">Patient Intake</span>
+          <Link className="topbar-login" to={me ? "/account" : "/login"}>
+            {me ? "My case" : "Client login"}
+          </Link>
           <button className="btn btn-cta topbar-cta" onClick={scrollToBegin}>
             Start here
           </button>
@@ -223,6 +234,11 @@ export function LandingPage() {
         <span className="muted">
           Transparent, patient-first care. Your information stays private.
         </span>
+        <nav className="foot-links">
+          <Link to={me ? "/account" : "/login"}>
+            {me ? "My case" : "Client login"}
+          </Link>
+        </nav>
       </footer>
     </div>
   );
