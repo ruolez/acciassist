@@ -1,5 +1,7 @@
-from app.models import QuestionType
-from app.seed import _AUTO_QUESTIONS, _FALL_QUESTIONS
+from sqlalchemy import select
+
+from app.models import InjuryType, Question, QuestionType
+from app.seed import _AUTO_QUESTIONS, _FALL_QUESTIONS, _backfill_location_question
 
 CHOICE_TYPES = (QuestionType.single_choice, QuestionType.multi_choice)
 
@@ -46,6 +48,42 @@ def test_location_question_uses_composite_type():
         location = next(q for q in questions if q[0] == "state_county")
         assert location[1] is QuestionType.us_state_county
         assert location[4] is True  # required
+
+
+async def test_backfill_adds_location_only_where_state_is_not_collected(session_factory):
+    async with session_factory() as db:
+        bare = InjuryType(slug="bare", name="Bare", display_order=0, is_published=True)
+        bare.questions.append(
+            Question(slug="q1", type=QuestionType.yes_no, prompt="Hurt?", display_order=0)
+        )
+        legacy = InjuryType(slug="legacy", name="Legacy", display_order=1, is_published=True)
+        legacy.questions.append(
+            Question(
+                slug="state", type=QuestionType.short_text, prompt="State?", display_order=0
+            )
+        )
+        db.add_all([bare, legacy])
+        await db.commit()
+
+        await _backfill_location_question(db)
+        await db.commit()
+
+    async with session_factory() as db:
+        rows = (
+            await db.scalars(select(Question).where(Question.slug == "state_county"))
+        ).all()
+        assert len(rows) == 1
+        added = rows[0]
+        assert added.type == QuestionType.us_state_county
+        assert added.display_order == -1  # ahead of the existing first question
+
+        # Idempotent: a second run adds nothing.
+        await _backfill_location_question(db)
+        await db.commit()
+        again = (
+            await db.scalars(select(Question).where(Question.slug == "state_county"))
+        ).all()
+        assert len(again) == 1
 
 
 def test_every_dollar_question_has_a_documented_pair():

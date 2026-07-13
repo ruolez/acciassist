@@ -216,6 +216,9 @@ cmd_update() {
   info "Applying database migrations…"
   compose run --rm backend alembic upgrade head
 
+  info "Refreshing seed reference data (idempotent; never touches admin edits)…"
+  compose run --rm backend python -m app.seed
+
   info "Cleaning unused Docker images…"
   docker image prune -f   >/dev/null 2>&1 || true
   docker builder prune -f >/dev/null 2>&1 || true

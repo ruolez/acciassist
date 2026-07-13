@@ -689,6 +689,42 @@ async def _seed_injury_type(
     print(f"Created '{name}' injury type with seeded questionnaire")
 
 
+async def _backfill_location_question(db) -> None:
+    """Add the state+county question to existing questionnaires that do not
+    collect the incident state at all. Questionnaires that already ask for
+    the state (old separate questions or the composite type) are left alone —
+    the seeder never edits or removes admin-owned questions."""
+    injury_types = (await db.scalars(select(InjuryType))).all()
+    for injury in injury_types:
+        questions = (
+            await db.scalars(select(Question).where(Question.injury_type_id == injury.id))
+        ).all()
+        collects_state = any(
+            q.type == QuestionType.us_state_county or q.slug in ("state", "state_county")
+            for q in questions
+        )
+        if collects_state:
+            continue
+        first_order = min((q.display_order for q in questions), default=1)
+        db.add(
+            Question(
+                injury_type_id=injury.id,
+                slug="state_county",
+                type=QuestionType.us_state_county,
+                prompt="Which state and county did it happen in?",
+                help_text=(
+                    "Deadlines, fault rules, and typical case values depend on where "
+                    "it happened."
+                ),
+                is_required=True,
+                display_order=first_order - 1,
+                page_group=None,
+                config={},
+            )
+        )
+        print(f"Added state/county question to '{injury.name}'")
+
+
 async def main() -> None:
     async with SessionLocal() as db:
         await _seed_admin(db)
@@ -714,6 +750,7 @@ async def main() -> None:
             estimate_min=5000,
             estimate_max=25000,
         )
+        await _backfill_location_question(db)
         inserted = await seed_jurisdiction_defaults(db)
         print(f"Jurisdiction rules: inserted {inserted} missing state rows")
         counties = await seed_us_counties(db)
