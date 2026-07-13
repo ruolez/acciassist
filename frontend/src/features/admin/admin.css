@@ -977,3 +977,21 @@
   margin-left: auto;
   font-size: 0.85rem;
 }
+
+/* ── Estimate gap-filling ──────────────────────────────────────────── */
+.gap-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin: var(--space-4) 0;
+}
+.gap-list-card h2 {
+  margin-top: 0;
+  font-size: 1.05rem;
+}
+.gap-list {
+  margin: var(--space-2) 0 0;
+  padding-left: 1.2em;
+  font-size: 0.92rem;
+  line-height: 1.6;
+}

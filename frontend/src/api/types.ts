@@ -320,6 +320,7 @@ export type AdminCaseListItem = {
 };
 
 export type AdminCaseDetail = AdminCaseListItem & {
+  injury_type_id: number | null;
   intake_session_id: string | null;
   updates: AdminCaseUpdate[];
   estimate: CaseEstimateAdmin | null;

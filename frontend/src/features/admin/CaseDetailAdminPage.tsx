@@ -3,11 +3,58 @@ import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { api } from "../../api/client";
-import type { AdminCaseDetail, CaseStage } from "../../api/types";
+import type { AdminCaseDetail, CaseEstimateAdmin, CaseStage, Question } from "../../api/types";
 import { CASE_STAGES, STAGE_LABELS } from "../account/stages";
+import { AdviceCard } from "./AdviceCard";
 import { PipelineEstimateCard } from "./PipelineEstimateCard";
 import { useActionError } from "./useActionError";
 import "./admin.css";
+
+function EstimateGapCard({
+  sessionId,
+  injuryTypeId,
+}: {
+  sessionId: string;
+  injuryTypeId: number;
+}) {
+  // Watches the same query the estimate card polls, so the gap list always
+  // reflects the latest run.
+  const { data: estimate } = useQuery({
+    queryKey: ["admin", "ai", "estimate", sessionId],
+    queryFn: () => api<CaseEstimateAdmin | null>(`/admin/ai/sessions/${sessionId}/estimate`),
+  });
+  const { data: questions } = useQuery({
+    queryKey: ["admin", "questions", injuryTypeId],
+    queryFn: () => api<Question[]>(`/admin/injury-types/${injuryTypeId}/questions`),
+  });
+
+  const gaps = estimate?.status === "completed" ? (estimate.missing_info ?? []) : [];
+  if (gaps.length === 0) return null;
+
+  return (
+    <div className="gap-card">
+      <div className="card gap-list-card">
+        <h2>Missing information from this estimate</h2>
+        <p className="muted">
+          These facts were missing or undocumented and widened the estimate&apos;s range.
+        </p>
+        <ul className="gap-list">
+          {gaps.map((g) => (
+            <li key={g}>{g}</li>
+          ))}
+        </ul>
+      </div>
+      <AdviceCard
+        injuryTypeId={injuryTypeId}
+        questions={questions}
+        title="Close the questionnaire gaps"
+        description="Ask the AI to draft questions that would collect the missing information above, then review and add them to the questionnaire. New questions apply to future intakes only — this patient's answers don't change."
+        generatePath={`/admin/ai/sessions/${sessionId}/estimate/propose-questions`}
+        generateLabel="Propose questions for the gaps"
+      />
+    </div>
+  );
+}
 
 export function CaseDetailAdminPage() {
   const { caseId } = useParams();
@@ -140,6 +187,12 @@ export function CaseDetailAdminPage() {
           sessionId={data.intake_session_id}
           initial={data.estimate}
           onError={onError}
+        />
+      )}
+      {data.intake_session_id && data.injury_type_id && (
+        <EstimateGapCard
+          sessionId={data.intake_session_id}
+          injuryTypeId={data.injury_type_id}
         />
       )}
 

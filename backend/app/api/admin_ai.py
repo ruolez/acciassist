@@ -6,7 +6,14 @@ from sqlalchemy import select
 
 from app.deps import DbSession
 from app.errors import AppError
-from app.models import CaseEstimate, EstimateAdvice, InjuryType, IntakeSession, IntakeStatus
+from app.models import (
+    CaseEstimate,
+    EstimateAdvice,
+    EstimateStatus,
+    InjuryType,
+    IntakeSession,
+    IntakeStatus,
+)
 from app.schemas import (
     AdviceApplyIn,
     CaseEstimateAdminOut,
@@ -153,6 +160,45 @@ async def get_estimate(session_id: uuid.UUID, db: DbSession) -> CaseEstimate | N
     return await db.scalar(
         select(CaseEstimate).where(CaseEstimate.intake_session_id == session_id)
     )
+
+
+def _estimate_gaps(estimate: CaseEstimate) -> list[str]:
+    """Missing facts from the latest run: the assembled improvements list plus
+    the extraction's missing driver fields, deduped in order."""
+    extraction = (estimate.internals or {}).get("extraction") or {}
+    driver_fields = (extraction.get("extraction_notes") or {}).get("missing_driver_fields") or []
+    gaps: list[str] = []
+    seen: set[str] = set()
+    for item in [*(estimate.missing_info or []), *driver_fields]:
+        text = str(item).strip()
+        if text and text.lower() not in seen:
+            seen.add(text.lower())
+            gaps.append(text)
+    return gaps
+
+
+@router.post(
+    "/sessions/{session_id}/estimate/propose-questions", response_model=EstimateAdviceOut
+)
+async def propose_gap_questions(session_id: uuid.UUID, db: DbSession) -> EstimateAdvice:
+    """Turn the latest estimate's missing information into questionnaire
+    proposals via the standard advice system (reviewed/applied like any other
+    advice). New questions help future intakes only."""
+    session = await _completed_session_or_error(db, session_id)
+    estimate = await db.scalar(
+        select(CaseEstimate).where(CaseEstimate.intake_session_id == session_id)
+    )
+    if estimate is None or estimate.status != EstimateStatus.completed:
+        raise AppError(
+            409, "estimate_not_ready", "Run the estimate to completion first"
+        )
+    gaps = _estimate_gaps(estimate)
+    if not gaps:
+        raise AppError(
+            400, "no_missing_info", "The latest estimate did not identify missing information"
+        )
+    injury_type = await _injury_type_or_404(db, session.injury_type_id)
+    return await generate_advice(db, injury_type, focus_gaps=gaps)
 
 
 @router.post("/sessions/{session_id}/estimate/rerun", response_model=CaseEstimateAdminOut)

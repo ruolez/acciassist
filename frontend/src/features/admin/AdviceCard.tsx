@@ -52,9 +52,18 @@ function PayloadDetail({ payload }: { payload: QuestionPayload }) {
 export function AdviceCard({
   injuryTypeId,
   questions,
+  title = "AI recommendations",
+  description = "Ask the AI what this questionnaire should collect for accurate case cost and payout estimates. It proposes ready-to-add questions and improvements you can review and apply.",
+  generatePath,
+  generateLabel = "Ask AI what's needed",
 }: {
   injuryTypeId: number;
   questions: Question[] | undefined;
+  title?: string;
+  description?: string;
+  /** Override for the generate endpoint (default: the injury-type advice endpoint). */
+  generatePath?: string;
+  generateLabel?: string;
 }) {
   const queryClient = useQueryClient();
   const KEY = ["admin", "ai", "advice", injuryTypeId];
@@ -81,7 +90,9 @@ export function AdviceCard({
 
   const generate = useMutation({
     mutationFn: () =>
-      api<EstimateAdvice>(`/admin/ai/injury-types/${injuryTypeId}/advice`, { method: "POST" }),
+      api<EstimateAdvice>(generatePath ?? `/admin/ai/injury-types/${injuryTypeId}/advice`, {
+        method: "POST",
+      }),
     onSuccess: refreshFromServer,
     onError: (e) => setAdviceError(failMessage(e, "Could not get AI recommendations")),
   });
@@ -166,19 +177,19 @@ export function AdviceCard({
     <div className="card advice-card">
       <div className="advice-head">
         <div>
-          <h2>AI recommendations</h2>
-          <p className="muted">
-            Ask the AI what this questionnaire should collect for accurate case cost and
-            payout estimates. It proposes ready-to-add questions and improvements you can
-            review and apply.
-          </p>
+          <h2>{title}</h2>
+          <p className="muted">{description}</p>
         </div>
         <button
           className="btn btn-outline"
           disabled={generate.isPending}
           onClick={handleGenerate}
         >
-          {generate.isPending ? "Asking…" : data ? "Regenerate" : "Ask AI what's needed"}
+          {generate.isPending
+            ? "Asking…"
+            : data && !generatePath
+              ? "Regenerate"
+              : generateLabel}
         </button>
       </div>
       {adviceError && <p className="error-text">{adviceError}</p>}

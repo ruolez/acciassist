@@ -181,7 +181,11 @@ async def schedule_estimate(
     return estimate
 
 
-def _advice_messages(injury_type: InjuryType, questions: list[Question]) -> list[dict]:
+def _advice_messages(
+    injury_type: InjuryType,
+    questions: list[Question],
+    focus_gaps: list[str] | None = None,
+) -> list[dict]:
     payload = [
         {
             "id": q.id,
@@ -195,14 +199,18 @@ def _advice_messages(injury_type: InjuryType, questions: list[Question]) -> list
         for q in questions
     ]
     body = json.dumps(payload, indent=2) if payload else "(no questions yet)"
+    content = f"Injury type: {injury_type.name}\n\nCurrent questionnaire (JSON):\n{body}"
+    if focus_gaps:
+        gap_lines = "\n".join(f"- {gap}" for gap in focus_gaps)
+        content += (
+            "\n\nA completed intake was analyzed for a settlement estimate, and these "
+            f"facts were missing or undocumented:\n{gap_lines}\n"
+            "Propose ONLY questions (or edits to existing questions) that would collect "
+            "these specific facts. Do not propose unrelated improvements."
+        )
     return [
         {"role": "system", "content": ADVICE_SYSTEM_PROMPT},
-        {
-            "role": "user",
-            "content": (
-                f"Injury type: {injury_type.name}\n\nCurrent questionnaire (JSON):\n{body}"
-            ),
-        },
+        {"role": "user", "content": content},
     ]
 
 
@@ -398,9 +406,13 @@ async def load_injury_type_questions(db: AsyncSession, injury_type_id: int) -> l
     )
 
 
-async def generate_advice(db: AsyncSession, injury_type: InjuryType) -> EstimateAdvice:
+async def generate_advice(
+    db: AsyncSession, injury_type: InjuryType, focus_gaps: list[str] | None = None
+) -> EstimateAdvice:
     """Ask the model what the questionnaire should collect — prose overview plus
-    structured question proposals — and upsert the result."""
+    structured question proposals — and upsert the result. With ``focus_gaps``
+    (missing facts from a completed estimate) proposals are restricted to
+    questions that would collect those facts."""
     app_settings = await get_app_settings(db)
     if not ai_configured(app_settings):
         raise AppError(400, "ai_not_configured", "Configure the OpenRouter key and model first")
@@ -409,7 +421,7 @@ async def generate_advice(db: AsyncSession, injury_type: InjuryType) -> Estimate
         content = await openrouter.chat_completion(
             app_settings.openrouter_api_key,
             app_settings.openrouter_model,
-            _advice_messages(injury_type, questions),
+            _advice_messages(injury_type, questions, focus_gaps),
             json_schema=ADVICE_JSON_SCHEMA,
             schema_name=ADVICE_SCHEMA_NAME,
             referer=app_settings.app_base_url,

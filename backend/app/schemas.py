@@ -508,6 +508,7 @@ class AdminCaseUpdateOut(CaseUpdateOut):
 
 
 class AdminCaseDetailOut(AdminCaseListOut):
+    injury_type_id: int | None = None
     intake_session_id: uuid.UUID | None
     updates: list[AdminCaseUpdateOut]
     estimate: CaseEstimateAdminOut | None = None

@@ -33,15 +33,18 @@ from app.services.notifications import (
 router = APIRouter()
 
 
-async def _injury_type_name(db: DbSession, case: Case) -> str | None:
+async def _injury_type_info(db: DbSession, case: Case) -> tuple[int | None, str | None]:
     if case.lead.intake_session_id is None:
-        return None
-    return await db.scalar(
-        select(InjuryType.name)
-        .select_from(IntakeSession)
-        .join(InjuryType, InjuryType.id == IntakeSession.injury_type_id)
-        .where(IntakeSession.id == case.lead.intake_session_id)
-    )
+        return None, None
+    row = (
+        await db.execute(
+            select(InjuryType.id, InjuryType.name)
+            .select_from(IntakeSession)
+            .join(InjuryType, InjuryType.id == IntakeSession.injury_type_id)
+            .where(IntakeSession.id == case.lead.intake_session_id)
+        )
+    ).first()
+    return (row.id, row.name) if row else (None, None)
 
 
 def _list_row(case: Case, injury_type_name: str | None) -> dict:
@@ -80,7 +83,7 @@ async def list_cases(
         query = query.where(Case.stage == stage)
     cases = await db.scalars(query)
     return [
-        AdminCaseListOut(**_list_row(case, await _injury_type_name(db, case)))
+        AdminCaseListOut(**_list_row(case, (await _injury_type_info(db, case))[1]))
         for case in cases
     ]
 
@@ -95,8 +98,10 @@ async def case_detail(case_id: int, db: DbSession) -> AdminCaseDetailOut:
                 CaseEstimate.intake_session_id == case.lead.intake_session_id
             )
         )
+    injury_type_id, injury_type_name = await _injury_type_info(db, case)
     return AdminCaseDetailOut(
-        **_list_row(case, await _injury_type_name(db, case)),
+        **_list_row(case, injury_type_name),
+        injury_type_id=injury_type_id,
         intake_session_id=case.lead.intake_session_id,
         estimate=CaseEstimateAdminOut.model_validate(estimate) if estimate else None,
         updates=[
