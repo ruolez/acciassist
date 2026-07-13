@@ -10,6 +10,7 @@ from app.api import (
     admin_jurisdictions,
     admin_settings,
     admin_submissions,
+    geo,
     health,
     public_intake,
     user_auth,
@@ -34,6 +35,7 @@ register_error_handlers(app)
 _admin_auth = [Depends(get_current_admin)]
 
 app.include_router(health.router, prefix="/api", tags=["health"])
+app.include_router(geo.router, prefix="/api", tags=["public"])
 app.include_router(public_intake.router, prefix="/api", tags=["public"])
 app.include_router(user_auth.router, prefix="/api/auth", tags=["user-auth"])
 app.include_router(

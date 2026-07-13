@@ -128,7 +128,10 @@ ADVICE_SYSTEM_PROMPT = (
     "Write prompts in plain, patient-friendly language. Choose the most structured type "
     "that fits (prefer choices over free text). single_choice and multi_choice MUST have "
     "at least 2 options with concise labels and stable values (lowercase letters, digits, "
-    "underscores). All other types MUST have an empty options list. Only set config keys "
+    "underscores). The us_state_county type is a built-in US state + county picker with "
+    "no options — ALWAYS use it (never free text or choices) when the state, county, or "
+    "venue of the incident is needed. All other types MUST have an empty options list. "
+    "Only set config keys "
     "that apply to the type (min/max: number; max_length: short_text/long_text; "
     "disallow_future: date; placeholder: text or number types); set every other config "
     "key to null. Never propose a question that duplicates one already in the "
@@ -265,6 +268,7 @@ _CONFIG_KEYS_BY_TYPE: dict[QuestionType, set[str]] = {
     QuestionType.single_choice: set(),
     QuestionType.multi_choice: set(),
     QuestionType.yes_no: set(),
+    QuestionType.us_state_county: set(),
 }
 
 MAX_NEW_PROPOSALS = 15
@@ -393,6 +397,49 @@ def sanitize_proposals(raw: RawAdvice, questions: list[Question]) -> list[dict]:
     if dropped:
         logger.warning("advice sanitization dropped %d invalid/duplicate proposals", dropped)
     return proposals
+
+
+LOCATION_PROPOSAL = {
+    "id": "add-location",
+    "kind": "add",
+    "payload": {
+        "type": "us_state_county",
+        "prompt": "Which state and county did it happen in?",
+        "help_text": (
+            "Deadlines, fault rules, and typical case values depend on where it happened."
+        ),
+        "is_required": True,
+        "config": {},
+        "options": [],
+    },
+    "rationale": (
+        "The estimate flagged the incident state/county as missing — it is one of the "
+        "strongest value drivers and gates the legal deadlines."
+    ),
+    "applied": False,
+    "applied_at": None,
+    "created_question_id": None,
+}
+
+
+def ensure_location_proposal(
+    advice: EstimateAdvice, questions: list[Question], gaps: list[str]
+) -> bool:
+    """Guarantee a state+county proposal whenever the estimate flags location
+    as missing: the model may fail to propose it, but this gap is too
+    important to leave to chance. Returns True if the list changed."""
+    mentions_location = any("state" in g.lower() or "county" in g.lower() for g in gaps)
+    has_question = any(q.type == QuestionType.us_state_county for q in questions)
+    proposals = advice.proposals or []
+    has_proposal = any(
+        (p.get("payload") or {}).get("type") == QuestionType.us_state_county.value
+        for p in proposals
+    )
+    if not mentions_location or has_question or has_proposal:
+        return False
+    # Reassignment (not mutation) so SQLAlchemy detects the JSONB change.
+    advice.proposals = [dict(LOCATION_PROPOSAL), *proposals]
+    return True
 
 
 async def load_injury_type_questions(db: AsyncSession, injury_type_id: int) -> list[Question]:

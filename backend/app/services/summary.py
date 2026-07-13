@@ -27,6 +27,12 @@ def answer_display_value(
         return ", ".join(labels.get(str(v), str(v)) for v in values)
     if question_type == QuestionType.single_choice:
         return labels.get(str(raw_value), str(raw_value))
+    if question_type == QuestionType.us_state_county:
+        # Stored as ["CA"] or ["CA", "San Bernardino County"].
+        parts = raw_value if isinstance(raw_value, list) else [raw_value]
+        if len(parts) >= 2:
+            return f"{parts[1]}, {parts[0]}"
+        return str(parts[0]) if parts else ""
     return str(raw_value)
 
 

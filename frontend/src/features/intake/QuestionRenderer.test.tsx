@@ -1,9 +1,24 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import type { Question } from "../../api/types";
 import { QuestionRenderer } from "./QuestionRenderer";
+
+vi.mock("../../api/client", () => ({
+  api: vi.fn((path: string) => {
+    if (path === "/geo/states") {
+      return Promise.resolve([
+        { code: "CA", name: "California" },
+        { code: "TX", name: "Texas" },
+      ]);
+    }
+    if (path === "/geo/counties/CA") {
+      return Promise.resolve(["Alameda County", "San Bernardino County"]);
+    }
+    return Promise.reject(new Error(`unexpected ${path}`));
+  }),
+}));
 
 function choiceQuestion(): Question {
   return {
@@ -24,6 +39,26 @@ function choiceQuestion(): Question {
 }
 
 describe("QuestionRenderer", () => {
+  it("picks a state then a dependent county for us_state_county", async () => {
+    const onChange = vi.fn();
+    const q = { ...choiceQuestion(), type: "us_state_county" as const, options: [] };
+    const { rerender } = render(
+      <QuestionRenderer question={q} value={null} onChange={onChange} />,
+    );
+    const stateSelect = await screen.findByLabelText("State");
+    await waitFor(() => expect(stateSelect).toContainHTML("California"));
+    expect(screen.getByLabelText("County")).toBeDisabled();
+
+    await userEvent.selectOptions(stateSelect, "CA");
+    expect(onChange).toHaveBeenCalledWith(["CA"]);
+
+    rerender(<QuestionRenderer question={q} value={["CA"]} onChange={onChange} />);
+    const countySelect = screen.getByLabelText("County");
+    await waitFor(() => expect(countySelect).toContainHTML("San Bernardino County"));
+    await userEvent.selectOptions(countySelect, "San Bernardino County");
+    expect(onChange).toHaveBeenCalledWith(["CA", "San Bernardino County"]);
+  });
+
   it("renders a dropdown for single choice with more than 8 options", async () => {
     const onChange = vi.fn();
     const q = {

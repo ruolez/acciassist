@@ -5,6 +5,10 @@ export function isAnswered(question: Question, value: AnswerValue): boolean {
   if (question.type === "multi_choice") {
     return Array.isArray(value) && value.length > 0;
   }
+  if (question.type === "us_state_county") {
+    // A complete answer names both the state and the county.
+    return Array.isArray(value) && value.length === 2 && value.every(Boolean);
+  }
   if (question.type === "yes_no") {
     return typeof value === "boolean";
   }

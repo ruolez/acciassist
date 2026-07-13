@@ -23,7 +23,12 @@ from app.schemas import (
 )
 from app.services import openrouter
 from app.services.email import get_app_settings
-from app.services.estimates import generate_advice, schedule_estimate
+from app.services.estimates import (
+    ensure_location_proposal,
+    generate_advice,
+    load_injury_type_questions,
+    schedule_estimate,
+)
 from app.services.openrouter import OpenRouterError, ai_configured
 from app.services.questions import apply_question_update, create_questions, load_question
 
@@ -198,7 +203,12 @@ async def propose_gap_questions(session_id: uuid.UUID, db: DbSession) -> Estimat
             400, "no_missing_info", "The latest estimate did not identify missing information"
         )
     injury_type = await _injury_type_or_404(db, session.injury_type_id)
-    return await generate_advice(db, injury_type, focus_gaps=gaps)
+    advice = await generate_advice(db, injury_type, focus_gaps=gaps)
+    questions = await load_injury_type_questions(db, injury_type.id)
+    if ensure_location_proposal(advice, questions, gaps):
+        await db.commit()
+        await db.refresh(advice)
+    return advice
 
 
 @router.post("/sessions/{session_id}/estimate/rerun", response_model=CaseEstimateAdminOut)

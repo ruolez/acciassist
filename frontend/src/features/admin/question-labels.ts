@@ -6,4 +6,5 @@ export const TYPE_SHORT: Record<string, string> = {
   date: "date",
   yes_no: "yes/no",
   long_text: "long text",
+  us_state_county: "state/county",
 };

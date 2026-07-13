@@ -30,6 +30,7 @@ from app.schemas import (
     QuestionOut,
     SummaryOut,
 )
+from app.services import geo
 from app.services.estimates import schedule_estimate
 from app.services.leads import process_lead
 from app.services.notifications import notify_lead_received
@@ -102,6 +103,17 @@ def _validate_answer(question: Question, value: object) -> None:
             if config.get("disallow_future") is True and parsed > date.today() + timedelta(
                 days=1
             ):
+                raise error
+        case QuestionType.us_state_county:
+            if (
+                not isinstance(value, list)
+                or not (1 <= len(value) <= 2)
+                or not all(isinstance(v, str) for v in value)
+            ):
+                raise error
+            if not geo.is_valid_state(value[0]):
+                raise error
+            if len(value) == 2 and not geo.is_valid_county(value[0], value[1]):
                 raise error
         case QuestionType.short_text:
             if not isinstance(value, str) or len(value) > _text_cap(config, 500):

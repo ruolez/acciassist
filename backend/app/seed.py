@@ -23,12 +23,8 @@ from app.models import (
     SummaryTemplate,
 )
 from app.security import hash_password
-from app.services.estimate_pipeline.jurisdiction_data import (
-    JURISDICTION_DEFAULTS,
-    seed_jurisdiction_defaults,
-)
-
-_STATE_OPTIONS = [(row["state_name"], row["state_code"]) for row in JURISDICTION_DEFAULTS]
+from app.services.estimate_pipeline.jurisdiction_data import seed_jurisdiction_defaults
+from app.services.geo import seed_us_counties
 
 # Shared blocks (same slugs across injury types so extraction stays uniform).
 # Each tuple: (slug, type, prompt, help_text, is_required, page_group, config, options)
@@ -38,23 +34,13 @@ _STATE_OPTIONS = [(row["state_name"], row["state_code"]) for row in JURISDICTION
 def _where_and_when(group_base: int) -> list[tuple]:
     return [
         (
-            "state",
-            QuestionType.single_choice,
-            "Which state did it happen in?",
-            "Deadlines, fault rules, and typical values differ by state.",
+            "state_county",
+            QuestionType.us_state_county,
+            "Which state and county did it happen in?",
+            "Deadlines, fault rules, and typical case values depend on where it happened.",
             True,
             group_base,
             {},
-            _STATE_OPTIONS,
-        ),
-        (
-            "county",
-            QuestionType.short_text,
-            "Which county or parish?",
-            "Case values vary by county, not just by state.",
-            False,
-            group_base,
-            {"placeholder": "e.g. San Bernardino"},
             [],
         ),
         (
@@ -602,7 +588,7 @@ _AUTO_SUMMARY_BODY = """Thank you for sharing the details of your auto accident.
 
 Here's a summary of what you told us:
 
-- Where it happened: {{county}}, {{state}}
+- Where it happened: {{state_county}}
 - Date of accident: {{incident_date}}
 - Your role: {{claimant_role}}
 - How it happened: {{impact_type}}
@@ -623,7 +609,7 @@ _FALL_SUMMARY_BODY = """Thank you for sharing the details of your fall.
 
 Here's a summary of what you told us:
 
-- Where it happened: {{location_type}} in {{county}}, {{state}}
+- Where it happened: {{location_type}} in {{state_county}}
 - Date: {{incident_date}}
 - What caused it: {{hazard_type}}
 - How long the hazard was there: {{hazard_duration}}
@@ -730,6 +716,8 @@ async def main() -> None:
         )
         inserted = await seed_jurisdiction_defaults(db)
         print(f"Jurisdiction rules: inserted {inserted} missing state rows")
+        counties = await seed_us_counties(db)
+        print(f"US counties: inserted {counties} rows")
         await db.commit()
     print("Seed complete.")
 

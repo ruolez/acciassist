@@ -64,6 +64,7 @@ const TYPE_LABELS: Record<QuestionType, string> = {
   date: "Date",
   yes_no: "Yes / No",
   long_text: "Long text",
+  us_state_county: "State & county (US)",
 };
 
 const CHOICE_TYPES: QuestionType[] = ["single_choice", "multi_choice"];

@@ -1,3 +1,6 @@
+import { useEffect, useState } from "react";
+
+import { api } from "../../api/client";
 import type { AnswerValue, Question } from "../../api/types";
 
 type Props = {
@@ -12,6 +15,95 @@ function todayISO(): string {
   const now = new Date();
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+}
+
+type StateInfo = { code: string; name: string };
+// Static reference data — cache for the life of the page.
+let statesCache: StateInfo[] | null = null;
+const countiesCache: Record<string, string[]> = {};
+
+function UsStateCountyInput({
+  value,
+  onChange,
+  autoFocus,
+}: {
+  value: AnswerValue;
+  onChange: (value: AnswerValue) => void;
+  autoFocus: boolean;
+}) {
+  const [stateCode, county] = Array.isArray(value) ? value : [];
+  const [states, setStates] = useState<StateInfo[]>(statesCache ?? []);
+  const [counties, setCounties] = useState<string[]>(
+    stateCode ? (countiesCache[stateCode] ?? []) : [],
+  );
+
+  useEffect(() => {
+    if (statesCache) return;
+    api<StateInfo[]>("/geo/states")
+      .then((list) => {
+        statesCache = list;
+        setStates(list);
+      })
+      .catch(() => setStates([]));
+  }, []);
+
+  useEffect(() => {
+    if (!stateCode) {
+      setCounties([]);
+      return;
+    }
+    if (countiesCache[stateCode]) {
+      setCounties(countiesCache[stateCode]);
+      return;
+    }
+    let cancelled = false;
+    api<string[]>(`/geo/counties/${stateCode}`)
+      .then((list) => {
+        countiesCache[stateCode] = list;
+        if (!cancelled) setCounties(list);
+      })
+      .catch(() => {
+        if (!cancelled) setCounties([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [stateCode]);
+
+  return (
+    <div className="state-county">
+      <select
+        className="select wizard-input"
+        aria-label="State"
+        value={stateCode ?? ""}
+        onChange={(e) => onChange(e.target.value ? [e.target.value] : null)}
+        autoFocus={autoFocus}
+      >
+        <option value="">Select a state…</option>
+        {states.map((s) => (
+          <option key={s.code} value={s.code}>
+            {s.name}
+          </option>
+        ))}
+      </select>
+      <select
+        className="select wizard-input"
+        aria-label="County"
+        value={county ?? ""}
+        disabled={!stateCode}
+        onChange={(e) =>
+          onChange(e.target.value ? [stateCode!, e.target.value] : [stateCode!])
+        }
+      >
+        <option value="">{stateCode ? "Select a county…" : "Pick a state first"}</option>
+        {counties.map((name) => (
+          <option key={name} value={name}>
+            {name}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
 }
 
 export function QuestionRenderer({ question, value, onChange, autoFocus = true }: Props) {
@@ -133,6 +225,11 @@ export function QuestionRenderer({ question, value, onChange, autoFocus = true }
           onChange={(e) => onChange(e.target.value)}
           autoFocus={autoFocus}
         />
+      );
+
+    case "us_state_county":
+      return (
+        <UsStateCountyInput value={value} onChange={onChange} autoFocus={autoFocus} />
       );
 
     case "short_text":

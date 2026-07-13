@@ -24,7 +24,7 @@ def test_auto_accident_questionnaire_is_structurally_valid():
     slugs = {q[0] for q in _AUTO_QUESTIONS}
     # The high-signal fields the pipeline keys on.
     assert {
-        "state", "county", "incident_date", "release_signed", "impact_type",
+        "state_county", "incident_date", "release_signed", "impact_type",
         "objective_finding", "treatment_level", "treatment_gap_30d",
         "medical_bills_amount", "medical_bills_documented", "health_payor",
         "employment_type", "property_damage", "commercial_defendant",
@@ -35,15 +35,17 @@ def test_slip_and_fall_questionnaire_is_structurally_valid():
     _check(_FALL_QUESTIONS)
     slugs = {q[0] for q in _FALL_QUESTIONS}
     assert {
-        "state", "incident_date", "release_signed", "location_type", "claimant_status",
-        "hazard_duration", "warning_signs", "hazard_obvious",
+        "state_county", "incident_date", "release_signed", "location_type",
+        "claimant_status", "hazard_duration", "warning_signs", "hazard_obvious",
         "incident_report_same_day", "surveillance", "medical_bills_amount",
     } <= slugs
 
 
-def test_state_question_covers_51_jurisdictions():
-    state_q = next(q for q in _AUTO_QUESTIONS if q[0] == "state")
-    assert len(state_q[7]) == 51
+def test_location_question_uses_composite_type():
+    for questions in (_AUTO_QUESTIONS, _FALL_QUESTIONS):
+        location = next(q for q in questions if q[0] == "state_county")
+        assert location[1] is QuestionType.us_state_county
+        assert location[4] is True  # required
 
 
 def test_every_dollar_question_has_a_documented_pair():

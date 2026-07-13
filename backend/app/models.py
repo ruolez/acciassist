@@ -28,6 +28,8 @@ class QuestionType(str, enum.Enum):
     date = "date"
     yes_no = "yes_no"
     long_text = "long_text"
+    # Composite US location picker: answer is ["CA", "San Bernardino County"].
+    us_state_county = "us_state_county"
 
 
 class IntakeStatus(str, enum.Enum):
@@ -421,6 +423,19 @@ class JurisdictionRule(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
+
+
+class UsCounty(Base):
+    """Reference list of US counties/county-equivalents (Census 2020),
+    seeded from the bundled dataset; backs the state+county intake question."""
+
+    __tablename__ = "us_counties"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    state_code: Mapped[str] = mapped_column(String(2), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+
+    __table_args__ = (UniqueConstraint("state_code", "name", name="uq_county_state_name"),)
 
 
 class AppSettings(Base):

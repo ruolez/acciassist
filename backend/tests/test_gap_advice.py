@@ -110,6 +110,39 @@ async def test_proposals_apply_into_the_questionnaire(admin_client, session_fact
     assert any(q["prompt"].startswith("Which state") for q in questions)
 
 
+async def test_location_proposal_guaranteed_when_state_is_missing(
+    admin_client, session_factory, dispatcher
+):
+    """The sparse extraction flags the state; even though the model's advice
+    reply proposes no location question, one is injected deterministically."""
+    await seed_ai_settings(session_factory)
+    await seed_jurisdictions(session_factory)
+    sid = await completed_session(admin_client)
+
+    advice = (
+        await admin_client.post(f"/api/admin/ai/sessions/{sid}/estimate/propose-questions")
+    ).json()
+    location = advice["proposals"][0]
+    assert location["id"] == "add-location"
+    assert location["payload"]["type"] == "us_state_county"
+
+    # Applying it creates a real question of the composite type.
+    itid = (await admin_client.get(f"/api/admin/intake-sessions/{sid}")).json()["injury_type_id"]
+    resp = await admin_client.post(
+        f"/api/admin/ai/injury-types/{itid}/advice/apply",
+        json={"proposal_ids": ["add-location"]},
+    )
+    assert resp.status_code == 200
+    questions = (await admin_client.get(f"/api/admin/injury-types/{itid}/questions")).json()
+    assert any(q["type"] == "us_state_county" for q in questions)
+
+    # Re-proposing after the question exists does not inject a duplicate.
+    advice = (
+        await admin_client.post(f"/api/admin/ai/sessions/{sid}/estimate/propose-questions")
+    ).json()
+    assert not any(p["id"] == "add-location" for p in advice["proposals"])
+
+
 async def test_no_missing_info_returns_400(admin_client, session_factory, monkeypatch):
     d = PipelineDispatcher()  # rich rear-end extraction → no gaps
     monkeypatch.setattr("app.services.openrouter.chat_completion", d)

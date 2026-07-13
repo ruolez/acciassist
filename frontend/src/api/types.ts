@@ -5,7 +5,8 @@ export type QuestionType =
   | "number"
   | "date"
   | "yes_no"
-  | "long_text";
+  | "long_text"
+  | "us_state_county";
 
 export type QuestionOption = {
   id: number;
