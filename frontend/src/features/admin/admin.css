@@ -1119,3 +1119,196 @@
 .advice-card > .btn-primary {
   align-self: flex-start;
 }
+
+/* ── Humanized estimate: receipt, steps, factors, warnings ─────────── */
+.receipt {
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.receipt-title {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+  background: var(--surface-tint);
+  border-bottom: 1px solid var(--outline);
+}
+.receipt-row {
+  padding: var(--space-2) var(--space-4);
+}
+.receipt-row + .receipt-row {
+  border-top: 1px solid var(--outline);
+}
+.receipt-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-4);
+}
+.receipt-label {
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+.receipt-amount {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.98rem;
+  white-space: nowrap;
+}
+.receipt-detail {
+  margin: 2px 0 0;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  max-width: 620px;
+}
+.receipt-row.adjustment .receipt-label {
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+.receipt-row.deduction .receipt-label {
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+.receipt-row.deduction .receipt-amount {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+.receipt-row.total {
+  background: var(--navy-soft);
+  padding-top: var(--space-3);
+  padding-bottom: var(--space-3);
+}
+.receipt-row.total .receipt-label {
+  font-size: 0.98rem;
+}
+.receipt-row.total .receipt-amount {
+  font-size: 1.15rem;
+  color: var(--navy);
+}
+
+.pipeline-steps {
+  list-style: none;
+  margin: var(--space-2) 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.pipeline-step {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: 0.92rem;
+  color: var(--text-secondary);
+}
+.pipeline-step-mark {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--outline-strong);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  flex: 0 0 22px;
+}
+.pipeline-step.done {
+  color: var(--on-surface);
+}
+.pipeline-step.done .pipeline-step-mark {
+  background: #e7f4ea;
+  border-color: #c6e5cd;
+  color: var(--success);
+}
+.pipeline-step.current {
+  color: var(--on-surface);
+  font-weight: 600;
+}
+.pipeline-step.current .pipeline-step-mark {
+  border-color: var(--navy);
+  animation: step-pulse 1.2s ease-in-out infinite;
+}
+@keyframes step-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(24, 42, 99, 0.25); }
+  50% { box-shadow: 0 0 0 6px rgba(24, 42, 99, 0); }
+}
+
+.admin-warnings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.admin-warning {
+  margin: 0;
+  font-size: 0.9rem;
+  padding: var(--space-2) var(--space-3);
+  border-radius: 8px;
+  background: #fef7e0;
+  color: #5f4b00;
+}
+.admin-warning.urgent {
+  background: #fdecea;
+  color: #a5281a;
+  font-weight: 600;
+}
+
+.factor-cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--space-4);
+}
+.factor-col ul {
+  margin: var(--space-2) 0 0;
+  padding-left: 1.2em;
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+.factor-title {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.factor-title.up { color: var(--success); }
+.factor-title.down { color: var(--error); }
+
+.estimate-failed {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  background: #fdecea;
+  color: #a5281a;
+  border-radius: var(--radius-sm);
+  font-size: 0.92rem;
+}
+.advice-all-applied,
+.gap-applied-note {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  background: #e7f4ea;
+  color: var(--success);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+.gap-applied-note {
+  margin-top: var(--space-3);
+}
+.technical-drawer summary {
+  color: var(--text-secondary);
+}
+.technical-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.technical-block h4 {
+  margin: 0 0 var(--space-2);
+  font-size: 0.85rem;
+}

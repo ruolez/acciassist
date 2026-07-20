@@ -3,7 +3,13 @@ import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { api } from "../../api/client";
-import type { AdminCaseDetail, CaseEstimateAdmin, CaseStage, Question } from "../../api/types";
+import type {
+  AdminCaseDetail,
+  CaseEstimateAdmin,
+  CaseStage,
+  EstimateAdvice,
+  Question,
+} from "../../api/types";
 import { CASE_STAGES, STAGE_LABELS } from "../account/stages";
 import { AdviceCard } from "./AdviceCard";
 import { PipelineEstimateCard } from "./PipelineEstimateCard";
@@ -27,6 +33,13 @@ function EstimateGapCard({
     queryKey: ["admin", "questions", injuryTypeId],
     queryFn: () => api<Question[]>(`/admin/injury-types/${injuryTypeId}/questions`),
   });
+  // Same query AdviceCard uses — lets the gap list acknowledge questions that
+  // were already added, since the missing list only refreshes on a re-run.
+  const { data: advice } = useQuery({
+    queryKey: ["admin", "ai", "advice", injuryTypeId],
+    queryFn: () => api<EstimateAdvice | null>(`/admin/ai/injury-types/${injuryTypeId}/advice`),
+  });
+  const appliedCount = (advice?.proposals ?? []).filter((p) => p.applied).length;
 
   const gaps = estimate?.status === "completed" ? (estimate.missing_info ?? []) : [];
   if (gaps.length === 0) return null;
@@ -43,6 +56,12 @@ function EstimateGapCard({
             <li key={g}>{g}</li>
           ))}
         </ul>
+        {appliedCount > 0 && (
+          <p className="gap-applied-note">
+            ✓ {appliedCount} question{appliedCount === 1 ? "" : "s"} already added to the
+            questionnaire — this list refreshes the next time an estimate runs.
+          </p>
+        )}
       </div>
       <AdviceCard
         injuryTypeId={injuryTypeId}

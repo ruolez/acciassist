@@ -117,12 +117,15 @@ export function AdviceCard({
   });
 
   const proposals: Proposal[] = data?.proposals ?? [];
-  const adds = proposals.filter((p): p is ProposalAdd => p.kind === "add");
-  const edits = proposals.filter((p): p is ProposalEdit => p.kind === "edit");
+  // Applied proposals stay in the DB as history but never render — the list
+  // shows only what still needs a decision.
+  const appliedCount = proposals.filter((p) => p.applied).length;
+  const adds = proposals.filter((p): p is ProposalAdd => p.kind === "add" && !p.applied);
+  const edits = proposals.filter((p): p is ProposalEdit => p.kind === "edit" && !p.applied);
   const questionById = new Map((questions ?? []).map((q) => [q.id, q]));
 
   const isStale = (p: ProposalEdit) =>
-    questions !== undefined && !p.applied && !questionById.has(p.question_id);
+    questions !== undefined && !questionById.has(p.question_id);
   const removesOptions = (p: ProposalEdit) => {
     const target = questionById.get(p.question_id);
     if (!target) return false;
@@ -130,8 +133,8 @@ export function AdviceCard({
   };
 
   const selectableIds = [
-    ...adds.filter((p) => !p.applied).map((p) => p.id),
-    ...edits.filter((p) => !p.applied && !isStale(p)).map((p) => p.id),
+    ...adds.map((p) => p.id),
+    ...edits.filter((p) => !isStale(p)).map((p) => p.id),
   ];
 
   const toggle = (id: string) =>
@@ -196,27 +199,30 @@ export function AdviceCard({
 
       {data && data.content && <p className="advice-overview">{data.content}</p>}
 
+      {proposals.length > 0 && adds.length === 0 && edits.length === 0 && (
+        <p className="advice-all-applied">
+          ✓ All {appliedCount} proposed question{appliedCount === 1 ? " has" : "s have"} been
+          added to the questionnaire.
+        </p>
+      )}
+
       {adds.length > 0 && (
         <div className="proposal-section">
           {sectionHeader(
             "Proposed new questions",
-            adds.filter((p) => !p.applied).map((p) => p.id),
+            adds.map((p) => p.id),
           )}
           {adds.map((p) => (
-            <label
-              key={p.id}
-              className={`proposal-item${p.applied ? " applied" : ""}`}
-            >
+            <label key={p.id} className="proposal-item">
               <input
                 type="checkbox"
-                checked={p.applied || selected.has(p.id)}
-                disabled={p.applied || apply.isPending}
+                checked={selected.has(p.id)}
+                disabled={apply.isPending}
                 onChange={() => toggle(p.id)}
               />
               <div className="proposal-body">
                 <PayloadDetail payload={p.payload} />
                 {p.rationale && <p className="muted proposal-rationale">{p.rationale}</p>}
-                {p.applied && <span className="badge proposal-applied">Added ✓</span>}
               </div>
             </label>
           ))}
@@ -227,7 +233,7 @@ export function AdviceCard({
         <div className="proposal-section">
           {sectionHeader(
             "Suggested edits to existing questions",
-            edits.filter((p) => !p.applied && !isStale(p)).map((p) => p.id),
+            edits.filter((p) => !isStale(p)).map((p) => p.id),
           )}
           {edits.map((p) => {
             const target = questionById.get(p.question_id);
@@ -235,12 +241,12 @@ export function AdviceCard({
             return (
               <label
                 key={p.id}
-                className={`proposal-item${p.applied ? " applied" : ""}${stale ? " stale" : ""}`}
+                className={`proposal-item${stale ? " stale" : ""}`}
               >
                 <input
                   type="checkbox"
-                  checked={p.applied || selected.has(p.id)}
-                  disabled={p.applied || stale || apply.isPending}
+                  checked={selected.has(p.id)}
+                  disabled={stale || apply.isPending}
                   onChange={() => toggle(p.id)}
                 />
                 <div className="proposal-body">
@@ -285,7 +291,6 @@ export function AdviceCard({
                       </div>
                     </details>
                   )}
-                  {p.applied && <span className="badge proposal-applied">Updated ✓</span>}
                 </div>
               </label>
             );
