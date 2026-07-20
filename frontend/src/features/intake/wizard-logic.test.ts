@@ -14,6 +14,7 @@ function makeQuestion(type: QuestionType, overrides: Partial<Question> = {}): Qu
     id: 1,
     slug: "q",
     type,
+    phase: "initial",
     prompt: "Q?",
     help_text: null,
     is_required: true,

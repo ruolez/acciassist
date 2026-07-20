@@ -127,6 +127,9 @@ class Question(Base):
     type: Mapped[QuestionType] = mapped_column(
         Enum(QuestionType, name="question_type"), nullable=False
     )
+    # 'initial' questions run during anonymous onboarding; 'follow_up' ones are
+    # answered in the portal after the lead signs up and refine the estimate.
+    phase: Mapped[str] = mapped_column(String(10), nullable=False, default="initial")
     prompt: Mapped[str] = mapped_column(Text, nullable=False)
     help_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_required: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
@@ -195,6 +198,9 @@ class IntakeSession(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    followup_completed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     answers: Mapped[list["IntakeAnswer"]] = relationship(
         back_populates="session", cascade="all, delete-orphan"

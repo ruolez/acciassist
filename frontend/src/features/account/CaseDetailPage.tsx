@@ -15,6 +15,9 @@ export function CaseDetailPage() {
     queryKey: ["user", "cases", caseId],
     queryFn: () => api<CaseDetail>(`/me/cases/${caseId}`),
     enabled: !!caseId,
+    // After the follow-up submits, the refined estimate is recalculating —
+    // poll until it lands.
+    refetchInterval: (q) => (q.state.data?.estimate_status === "pending" ? 3000 : false),
   });
 
   if (isLoading) return <div className="portal-empty">Loading your case…</div>;
@@ -41,10 +44,45 @@ export function CaseDetailPage() {
         <StageProgress stage={data.stage} />
       </div>
 
-      {range && (
+      {data.followup_pending && (
+        <div className="portal-section card followup-cta">
+          <div>
+            <h2>Sharpen your estimate</h2>
+            <p className="muted">
+              Your current estimate is a broad first look. {data.followup_total} short
+              follow-up question{data.followup_total === 1 ? "" : "s"} about
+              documentation and details will narrow it down.
+            </p>
+          </div>
+          <Link className="btn btn-cta" to={`/account/cases/${data.id}/follow-up`}>
+            Answer follow-up questions
+          </Link>
+        </div>
+      )}
+
+      {data.estimate_status === "pending" && (
+        <div className="portal-section card portal-recalc">
+          <span className="estimate-thinking-bar" />
+          <span className="muted">
+            Recalculating your estimate with your new answers…
+          </span>
+        </div>
+      )}
+
+      {range && data.estimate_status !== "pending" && (
         <div className="portal-section card estimate-card">
-          <span className="estimate-label">Estimated settlement range</span>
+          <span className="estimate-label">
+            Estimated settlement range
+            {data.estimate_refined && (
+              <span className="refined-chip">Refined with your follow-up answers ✓</span>
+            )}
+          </span>
           <span className="estimate-range">{range}</span>
+          {data.followup_pending && (
+            <span className="help-text">
+              A broad first estimate — answering the follow-up questions narrows it.
+            </span>
+          )}
         </div>
       )}
 

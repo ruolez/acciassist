@@ -57,6 +57,7 @@ async def create_questions(
             injury_type_id=injury_type_id,
             slug=slug,
             type=data.type,
+            phase=data.phase,
             prompt=data.prompt,
             help_text=data.help_text,
             is_required=data.is_required,
@@ -74,6 +75,7 @@ def apply_question_update(question: Question, data: QuestionIn) -> None:
     """Same semantics as the admin PUT: rewrite fields and replace options.
     slug, page_group, and display_order are never touched."""
     question.type = data.type
+    question.phase = data.phase
     question.prompt = data.prompt
     question.help_text = data.help_text
     question.is_required = data.is_required

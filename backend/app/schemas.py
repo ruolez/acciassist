@@ -105,8 +105,12 @@ class QuestionConfigIn(BaseModel):
         return self
 
 
+QuestionPhase = Literal["initial", "follow_up"]
+
+
 class QuestionIn(BaseModel):
     type: QuestionType
+    phase: QuestionPhase = "initial"
     prompt: str = Field(min_length=1)
     help_text: str | None = None
     is_required: bool = True
@@ -118,6 +122,7 @@ class QuestionOut(ORMModel):
     id: int
     slug: str
     type: QuestionType
+    phase: QuestionPhase
     prompt: str
     help_text: str | None
     is_required: bool
@@ -365,6 +370,7 @@ class QuestionPayloadOut(BaseModel):
     """A stored proposal payload — mirrors QuestionIn for output."""
 
     type: QuestionType
+    phase: QuestionPhase = "initial"
     prompt: str
     help_text: str | None = None
     is_required: bool = True
@@ -474,6 +480,7 @@ class CaseListOut(BaseModel):
     injury_type_name: str | None
     estimate_min: int | None
     estimate_max: int | None
+    followup_pending: bool = False
 
 
 class CaseDetailOut(CaseListOut):
@@ -482,6 +489,22 @@ class CaseDetailOut(CaseListOut):
     name: str
     email: EmailStr
     phone: str | None
+    followup_total: int = 0
+    estimate_status: str | None = None
+    # True once the follow-up answers have produced a completed estimate.
+    estimate_refined: bool = False
+
+
+class FollowupOut(BaseModel):
+    """Follow-up questionnaire for a case: pages of follow_up-phase questions
+    plus the answers already saved, so the portal wizard resumes server-side."""
+
+    pages: list[IntakePage]
+    total_pages: int
+    completed: bool
+    answers: dict[int, bool | int | float | str | list[str] | None] = Field(
+        default_factory=dict
+    )
 
 
 class CaseStageIn(BaseModel):

@@ -29,6 +29,11 @@ function PayloadDetail({ payload }: { payload: QuestionPayload }) {
     <>
       <p className="proposal-prompt">
         <span className="badge proposal-badge">{TYPE_SHORT[payload.type]}</span>
+        <span
+          className={`badge proposal-phase ${payload.phase === "initial" ? "phase-initial" : ""}`}
+        >
+          {payload.phase === "initial" ? "onboarding" : "follow-up"}
+        </span>
         {payload.prompt}
         <span className="muted proposal-required">
           {payload.is_required ? "· required" : "· optional"}

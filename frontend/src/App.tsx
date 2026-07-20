@@ -4,6 +4,7 @@ import { AccountLayout } from "./features/account/AccountLayout";
 import { CaseDetailPage } from "./features/account/CaseDetailPage";
 import { ClaimAccountPage } from "./features/account/ClaimAccountPage";
 import { DashboardPage } from "./features/account/DashboardPage";
+import { FollowupPage } from "./features/account/FollowupPage";
 import { ForgotPasswordPage } from "./features/account/ForgotPasswordPage";
 import { ResetPasswordPage } from "./features/account/ResetPasswordPage";
 import { UserLogin } from "./features/account/UserLogin";
@@ -38,6 +39,7 @@ export function App() {
       <Route path="/account" element={<AccountLayout />}>
         <Route index element={<DashboardPage />} />
         <Route path="cases/:caseId" element={<CaseDetailPage />} />
+        <Route path="cases/:caseId/follow-up" element={<FollowupPage />} />
       </Route>
 
       {/* Admin */}

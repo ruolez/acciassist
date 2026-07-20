@@ -141,13 +141,18 @@ async def _active_session(db: DbSession, session_id: uuid.UUID) -> IntakeSession
     return session
 
 
-async def _questions_for(db: DbSession, injury_type_id: int) -> list[Question]:
-    rows = await db.scalars(
+async def _questions_for(
+    db: DbSession, injury_type_id: int, phase: str | None = None
+) -> list[Question]:
+    stmt = (
         select(Question)
         .where(Question.injury_type_id == injury_type_id)
         .order_by(Question.display_order)
         .options(selectinload(Question.options))
     )
+    if phase is not None:
+        stmt = stmt.where(Question.phase == phase)
+    rows = await db.scalars(stmt)
     return list(rows)
 
 
@@ -164,7 +169,9 @@ async def public_injury_types(db: DbSession) -> list[InjuryType]:
 async def _start_payload(
     db: DbSession, injury_type: InjuryType, session: IntakeSession
 ) -> IntakeStartOut:
-    questions = await _questions_for(db, injury_type.id)
+    # The anonymous wizard only asks the short initial set; follow_up-phase
+    # questions are answered later in the logged-in portal.
+    questions = await _questions_for(db, injury_type.id, phase="initial")
     pages = [
         IntakePage(
             page_index=i,
@@ -203,14 +210,14 @@ async def get_session_pages(session_id: uuid.UUID, db: DbSession) -> IntakeStart
     return await _start_payload(db, injury_type, session)
 
 
-@router.post("/intake/{session_id}/answers", status_code=204)
-async def save_answers(
-    session_id: uuid.UUID, data: AnswersIn, db: DbSession
+async def upsert_answers(
+    db: DbSession,
+    session_id: uuid.UUID,
+    questions: dict[int, Question],
+    data: AnswersIn,
 ) -> None:
-    session = await _active_session(db, session_id)
-    if session.status == IntakeStatus.completed:
-        raise AppError(409, "already_completed", "This intake has already been submitted")
-    questions = {q.id: q for q in await _questions_for(db, session.injury_type_id)}
+    """Validate and upsert answers for the given allowed questions. The caller
+    owns phase/status gating and the commit."""
     existing = {
         a.question_id: a
         for a in await db.scalars(
@@ -234,6 +241,17 @@ async def save_answers(
                     value=answer.value,
                 )
             )
+
+
+@router.post("/intake/{session_id}/answers", status_code=204)
+async def save_answers(
+    session_id: uuid.UUID, data: AnswersIn, db: DbSession
+) -> None:
+    session = await _active_session(db, session_id)
+    if session.status == IntakeStatus.completed:
+        raise AppError(409, "already_completed", "This intake has already been submitted")
+    questions = {q.id: q for q in await _questions_for(db, session.injury_type_id)}
+    await upsert_answers(db, session_id, questions, data)
     await db.commit()
 
 

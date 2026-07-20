@@ -86,6 +86,31 @@ async def test_backfill_adds_location_only_where_state_is_not_collected(session_
         assert len(again) == 1
 
 
+def test_phase_split_keeps_onboarding_short_and_pairs_together():
+    from app.seed import _AUTO_FOLLOW_UP_SLUGS, _FALL_FOLLOW_UP_SLUGS
+
+    for questions, follow_up in (
+        (_AUTO_QUESTIONS, _AUTO_FOLLOW_UP_SLUGS),
+        (_FALL_QUESTIONS, _FALL_FOLLOW_UP_SLUGS),
+    ):
+        slugs = {q[0] for q in questions}
+        assert follow_up <= slugs, follow_up - slugs
+        initial = [q for q in questions if q[0] not in follow_up]
+        assert len(initial) <= 13, [q[0] for q in initial]
+        # The essentials stay in onboarding.
+        initial_slugs = {q[0] for q in initial}
+        assert {
+            "state_county", "incident_date", "release_signed", "objective_finding",
+            "treatment_level", "medical_bills_amount", "description",
+        } <= initial_slugs
+        # Questions sharing a wizard page share a phase.
+        by_group: dict[int, set[bool]] = {}
+        for slug, _t, _p, _h, _r, group, _c, _o in questions:
+            if group is not None:
+                by_group.setdefault(group, set()).add(slug in follow_up)
+        assert all(len(v) == 1 for v in by_group.values()), by_group
+
+
 def test_every_dollar_question_has_a_documented_pair():
     for questions in (_AUTO_QUESTIONS, _FALL_QUESTIONS):
         slugs = {q[0] for q in questions}

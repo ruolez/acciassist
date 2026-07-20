@@ -1,11 +1,18 @@
 import { useEffect, useState } from "react";
 
-import type { AnswerValue, Question, QuestionConfig, QuestionType } from "../../api/types";
+import type {
+  AnswerValue,
+  Question,
+  QuestionConfig,
+  QuestionPhase,
+  QuestionType,
+} from "../../api/types";
 import { QuestionRenderer } from "../intake/QuestionRenderer";
 import "../intake/intake.css";
 
 export type QuestionDraft = {
   type: QuestionType;
+  phase: QuestionPhase;
   prompt: string;
   help_text: string | null;
   is_required: boolean;
@@ -48,6 +55,7 @@ function draftFrom(initial: Question | null): QuestionDraft {
   if (!initial) return emptyDraft();
   return {
     type: initial.type,
+    phase: initial.phase,
     prompt: initial.prompt,
     help_text: initial.help_text,
     is_required: initial.is_required,
@@ -72,6 +80,7 @@ const CHOICE_TYPES: QuestionType[] = ["single_choice", "multi_choice"];
 function emptyDraft(): QuestionDraft {
   return {
     type: "single_choice",
+    phase: "initial",
     prompt: "",
     help_text: null,
     is_required: true,
@@ -146,6 +155,7 @@ export function QuestionEditor({
     display_order: 0,
     page_group: null,
     type: draft.type,
+    phase: draft.phase,
     prompt: draft.prompt,
     help_text: draft.help_text,
     is_required: draft.is_required,
@@ -188,6 +198,22 @@ export function QuestionEditor({
             </option>
           ))}
         </select>
+      </div>
+
+      <div className="field">
+        <label>When is it asked?</label>
+        <select
+          className="select"
+          value={draft.phase}
+          onChange={(e) => set("phase", e.target.value as QuestionPhase)}
+        >
+          <option value="initial">Onboarding — first questionnaire</option>
+          <option value="follow_up">Follow-up — after the patient signs up</option>
+        </select>
+        <p className="field-hint">
+          Onboarding stays short and produces the first broad estimate; follow-up
+          questions refine it in the patient&apos;s portal.
+        </p>
       </div>
 
       <div className="field">

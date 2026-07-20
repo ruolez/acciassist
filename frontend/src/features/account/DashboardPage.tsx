@@ -51,6 +51,9 @@ export function DashboardPage() {
                     Est. {formatRange(c.estimate_min, c.estimate_max)}
                   </span>
                 )}
+                {c.followup_pending && (
+                  <span className="followup-badge">Follow-up available</span>
+                )}
               </div>
             </Link>
           ))}

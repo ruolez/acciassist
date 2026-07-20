@@ -23,10 +23,13 @@ export type QuestionConfig = {
   disallow_future?: boolean;
 };
 
+export type QuestionPhase = "initial" | "follow_up";
+
 export type Question = {
   id: number;
   slug: string;
   type: QuestionType;
+  phase: QuestionPhase;
   prompt: string;
   help_text: string | null;
   is_required: boolean;
@@ -227,6 +230,7 @@ export type OpenRouterModel = {
 
 export type QuestionPayload = {
   type: QuestionType;
+  phase?: QuestionPhase;
   prompt: string;
   help_text: string | null;
   is_required: boolean;
@@ -297,6 +301,7 @@ export type CaseListItem = {
   injury_type_name: string | null;
   estimate_min: number | null;
   estimate_max: number | null;
+  followup_pending: boolean;
 };
 
 export type CaseDetail = CaseListItem & {
@@ -305,6 +310,16 @@ export type CaseDetail = CaseListItem & {
   name: string;
   email: string;
   phone: string | null;
+  followup_total: number;
+  estimate_status: "pending" | "completed" | "failed" | null;
+  estimate_refined: boolean;
+};
+
+export type Followup = {
+  pages: IntakePage[];
+  total_pages: number;
+  completed: boolean;
+  answers: Record<number, AnswerValue>;
 };
 
 export type AdminCaseUpdate = CaseUpdate & { admin_email: string | null };

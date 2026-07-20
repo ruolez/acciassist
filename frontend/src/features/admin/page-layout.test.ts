@@ -8,6 +8,7 @@ function q(id: number, displayOrder: number, pageGroup: number | null): Question
     id,
     slug: `q${id}`,
     type: "short_text",
+    phase: "initial",
     prompt: `Q${id}?`,
     help_text: null,
     is_required: true,

@@ -104,6 +104,7 @@ export function SummaryPage() {
       <EstimateResultCard
         estimate={estimate}
         calculating={calculating}
+        firstLook
         fallbackMin={data.estimate_min}
         fallbackMax={data.estimate_max}
         fallbackNote={data.estimate_note}
@@ -111,12 +112,22 @@ export function SummaryPage() {
 
       {submitted ? (
         <div className="card cta-card">
-          <h2>Thank you!</h2>
-          <p className="muted">
-            Check your inbox — we&apos;ve emailed your case details and a link to create
-            your account, where you can follow your case&apos;s progress. One of our
-            specialists will reach out shortly.
-          </p>
+          <h2>Thank you! Here&apos;s what happens next</h2>
+          <ol className="next-steps">
+            <li>
+              <strong>Check your inbox</strong> — we&apos;ve emailed a link to create
+              your account.
+            </li>
+            <li>
+              <strong>Answer a short follow-up</strong> in your account. Today&apos;s
+              estimate is a broad first look from the essentials; the follow-up covers
+              the details that let us narrow it down.
+            </li>
+            <li>
+              <strong>We take it from there</strong> — a specialist will reach out
+              shortly, and you can follow every step of your case in your account.
+            </li>
+          </ol>
         </div>
       ) : (
         <div className="card cta-card">

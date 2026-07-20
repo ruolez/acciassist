@@ -378,3 +378,17 @@
   flex-direction: column;
   gap: var(--space-3);
 }
+
+/* ── Post-lead next steps ──────────────────────────────────────────── */
+.next-steps {
+  margin: var(--space-3) 0 0;
+  padding-left: 1.3em;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+.next-steps strong {
+  color: var(--on-surface);
+}

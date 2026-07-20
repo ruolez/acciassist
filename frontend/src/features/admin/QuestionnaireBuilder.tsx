@@ -107,6 +107,7 @@ export function QuestionnaireBuilder() {
       selectedQuestion.config ?? {};
     create.mutate({
       type: selectedQuestion.type,
+      phase: selectedQuestion.phase,
       prompt: `${selectedQuestion.prompt} (copy)`,
       help_text: selectedQuestion.help_text,
       is_required: selectedQuestion.is_required,
@@ -148,7 +149,12 @@ export function QuestionnaireBuilder() {
                   onClick={() => selectGuarded(q.id)}
                 >
                   <span className="q-prompt">{q.prompt || "(untitled)"}</span>
-                  <span className="q-type">{TYPE_SHORT[q.type]}</span>
+                  <span className="q-type">
+                    {TYPE_SHORT[q.type]}
+                    {q.phase === "follow_up" && (
+                      <span className="q-phase-chip">follow-up</span>
+                    )}
+                  </span>
                 </button>
               )}
             />

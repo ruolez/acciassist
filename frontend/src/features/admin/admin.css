@@ -1312,3 +1312,24 @@
   margin: 0 0 var(--space-2);
   font-size: 0.85rem;
 }
+
+/* ── Question phase ────────────────────────────────────────────────── */
+.q-phase-chip {
+  margin-left: var(--space-2);
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--orange-soft);
+  color: var(--orange);
+}
+.badge.proposal-phase {
+  background: var(--orange-soft);
+  color: var(--orange);
+}
+.badge.proposal-phase.phase-initial {
+  background: var(--navy-soft);
+  color: var(--navy);
+}

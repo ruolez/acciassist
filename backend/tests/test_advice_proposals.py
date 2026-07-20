@@ -243,9 +243,11 @@ class TestApplyProposals:
         fetched = (await admin_client.get(f"/api/admin/ai/injury-types/{itid}/advice")).json()
         assert fetched == applied
 
-    async def test_new_questions_appear_in_patient_wizard(
+    async def test_new_questions_default_to_follow_up_phase(
         self, admin_client, session_factory, monkeypatch
     ):
+        """AI proposals without an explicit phase become follow-up questions:
+        they refine the estimate without lengthening the onboarding wizard."""
         itid = await _injury_type_with_question(admin_client)
         target = await _first_question(admin_client, itid)
         await _seed_advice(admin_client, session_factory, monkeypatch, itid, target["id"])
@@ -256,9 +258,15 @@ class TestApplyProposals:
         start = (
             await admin_client.post("/api/intake/start", json={"injury_type_id": itid})
         ).json()
-        assert start["total_pages"] == 3
-        prompts = [q["prompt"] for page in start["pages"] for q in page["questions"]]
-        assert prompts[-2:] == ["Medical bills so far?", "Medical bills so far!"]
+        wizard_prompts = [q["prompt"] for page in start["pages"] for q in page["questions"]]
+        assert "Medical bills so far?" not in wizard_prompts
+
+        questions = (
+            await admin_client.get(f"/api/admin/injury-types/{itid}/questions")
+        ).json()
+        created = [q for q in questions if q["prompt"].startswith("Medical bills")]
+        assert len(created) == 2
+        assert all(q["phase"] == "follow_up" for q in created)
 
     async def test_reapply_is_idempotent(self, admin_client, session_factory, monkeypatch):
         itid = await _injury_type_with_question(admin_client)

@@ -67,7 +67,9 @@ def lead_received_claim(
         + _estimate_html(estimate)
         + _paragraph(
             "Create your account to follow your case's progress, see updates from "
-            "our team, and review your intake summary any time."
+            "our team, and review your intake summary any time. Inside, a short "
+            "follow-up questionnaire lets us sharpen your estimate with the details "
+            "that matter."
         )
         + _button(claim_url, "Create your account")
         + _paragraph(
@@ -80,7 +82,8 @@ def lead_received_claim(
         "Thank you for telling us about your accident. Our specialists are reviewing "
         "your answers and will reach out shortly.\n\n"
         + (f"Estimated settlement range: {estimate}\n\n" if estimate else "")
-        + "Create your account to follow your case's progress:\n"
+        + "Create your account to follow your case's progress and answer a short "
+        "follow-up questionnaire that sharpens your estimate:\n"
         f"{claim_url}\n\n"
         "This link is personal to you and expires in 7 days.\n"
     )

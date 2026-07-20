@@ -8,6 +8,7 @@ row and queues ``run_pipeline`` as a background task.
 import json
 import logging
 import re
+from typing import Literal
 
 from fastapi import BackgroundTasks
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
@@ -66,6 +67,14 @@ _CONFIG_SCHEMA = {
 
 _QUESTION_FIELDS = {
     "type": {"type": "string", "enum": _QUESTION_TYPE_VALUES},
+    "phase": {
+        "type": "string",
+        "enum": ["initial", "follow_up"],
+        "description": (
+            "initial = asked during the deliberately short anonymous onboarding; "
+            "follow_up = asked in the portal after signup to refine the estimate"
+        ),
+    },
     "prompt": {"type": "string"},
     "help_text": {"type": ["string", "null"]},
     "is_required": {"type": "boolean"},
@@ -131,6 +140,9 @@ ADVICE_SYSTEM_PROMPT = (
     "underscores). The us_state_county type is a built-in US state + county picker with "
     "no options — ALWAYS use it (never free text or choices) when the state, county, or "
     "venue of the incident is needed. All other types MUST have an empty options list. "
+    "Every question has a phase: set 'initial' ONLY for facts essential to a first rough "
+    "estimate — onboarding is deliberately short. Documentation details, insurance "
+    "specifics, and refinements are 'follow_up' (asked after the patient signs up). "
     "Only set config keys "
     "that apply to the type (min/max: number; max_length: short_text/long_text; "
     "disallow_future: date; placeholder: text or number types); set every other config "
@@ -193,6 +205,7 @@ def _advice_messages(
         {
             "id": q.id,
             "type": q.type.value,
+            "phase": q.phase,
             "prompt": q.prompt,
             "help_text": q.help_text,
             "is_required": q.is_required,
@@ -224,6 +237,7 @@ class RawQuestionProposal(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     type: QuestionType
+    phase: Literal["initial", "follow_up"] = "follow_up"
     prompt: str
     help_text: str | None = None
     is_required: bool = True
@@ -307,6 +321,7 @@ def _sanitize_payload(raw: RawQuestionProposal) -> QuestionIn | None:
         return QuestionIn.model_validate(
             {
                 "type": raw.type,
+                "phase": raw.phase,
                 "prompt": raw.prompt.strip(),
                 "help_text": raw.help_text.strip() if raw.help_text else None,
                 "is_required": raw.is_required,
@@ -404,6 +419,7 @@ LOCATION_PROPOSAL = {
     "kind": "add",
     "payload": {
         "type": "us_state_county",
+        "phase": "initial",
         "prompt": "Which state and county did it happen in?",
         "help_text": (
             "Deadlines, fault rules, and typical case values depend on where it happened."
@@ -414,7 +430,8 @@ LOCATION_PROPOSAL = {
     },
     "rationale": (
         "The estimate flagged the incident state/county as missing — it is one of the "
-        "strongest value drivers and gates the legal deadlines."
+        "strongest value drivers and gates the legal deadlines, so it is worth asking "
+        "up front during onboarding."
     ),
     "applied": False,
     "applied_at": None,

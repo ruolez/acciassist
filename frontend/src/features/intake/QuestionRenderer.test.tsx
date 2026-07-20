@@ -25,6 +25,7 @@ function choiceQuestion(): Question {
     id: 1,
     slug: "role",
     type: "single_choice",
+    phase: "initial",
     prompt: "Driver?",
     help_text: null,
     is_required: true,

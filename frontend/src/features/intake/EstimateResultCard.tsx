@@ -53,12 +53,15 @@ export function EstimateResultCard({
   fallbackMin,
   fallbackMax,
   fallbackNote,
+  firstLook = false,
 }: {
   estimate: PublicEstimate | undefined;
   calculating: boolean;
   fallbackMin: number | null;
   fallbackMax: number | null;
   fallbackNote: string;
+  /** Frames the range as a broad first estimate from the initial questions. */
+  firstLook?: boolean;
 }) {
   if (calculating) {
     return (
@@ -90,8 +93,16 @@ export function EstimateResultCard({
     const net = formatRange(estimate.net_min, estimate.net_max);
     return (
       <div className="card estimate-card estimate-full">
-        <span className="estimate-label">Estimated settlement range</span>
+        <span className="estimate-label">
+          {firstLook ? "Your first estimate" : "Estimated settlement range"}
+        </span>
         <span className="estimate-range">{gross ?? "—"}</span>
+        {firstLook && (
+          <span className="help-text">
+            A broad first look based on your initial answers — it narrows once we know
+            more details.
+          </span>
+        )}
         {net && (
           <div className="estimate-net">
             <span className="estimate-net-label">Estimated in your pocket</span>

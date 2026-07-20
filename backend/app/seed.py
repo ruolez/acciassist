@@ -29,6 +29,28 @@ from app.services.geo import seed_us_counties
 # Shared blocks (same slugs across injury types so extraction stays uniform).
 # Each tuple: (slug, type, prompt, help_text, is_required, page_group, config, options)
 # options is a list of (label, value).
+#
+# Phase split: onboarding stays short. Questions NOT listed below are asked
+# during the anonymous wizard ('initial'); the rest become portal follow-ups
+# that refine the estimate after the patient signs up. Page-group pairs must
+# stay in one phase.
+
+_AUTO_FOLLOW_UP_SLUGS = {
+    "police_report", "citation_issued_to", "property_damage", "commercial_defendant",
+    "um_uim_coverage", "time_to_first_treatment", "injured_areas", "finding_text",
+    "still_treating", "treatment_gap_30d", "gap_reason", "future_care",
+    "pre_existing_same_area", "prior_claims", "health_payor",
+    "lost_wages_amount", "employment_type", "wages_documentable",
+}
+
+_FALL_FOLLOW_UP_SLUGS = {
+    "staff_caused", "prior_complaints", "warning_signs", "hazard_obvious",
+    "incident_report_same_day", "photos_taken", "surveillance",
+    "time_to_first_treatment", "injured_areas", "finding_text", "still_treating",
+    "treatment_gap_30d", "gap_reason", "future_care", "pre_existing_same_area",
+    "prior_claims", "health_payor",
+    "lost_wages_amount", "employment_type", "wages_documentable",
+}
 
 
 def _where_and_when(group_base: int) -> list[tuple]:
@@ -647,6 +669,7 @@ async def _seed_injury_type(
     description: str,
     display_order: int,
     questions: list[tuple],
+    follow_up_slugs: set[str],
     summary_body: str,
     estimate_min: int,
     estimate_max: int,
@@ -670,6 +693,7 @@ async def _seed_injury_type(
             Question(
                 slug=qslug,
                 type=qtype,
+                phase="follow_up" if qslug in follow_up_slugs else "initial",
                 prompt=prompt,
                 help_text=help_text,
                 is_required=required,
@@ -735,6 +759,7 @@ async def main() -> None:
             description="You were involved in a car, truck, or motorcycle accident.",
             display_order=0,
             questions=_AUTO_QUESTIONS,
+            follow_up_slugs=_AUTO_FOLLOW_UP_SLUGS,
             summary_body=_AUTO_SUMMARY_BODY,
             estimate_min=5000,
             estimate_max=25000,
@@ -746,6 +771,7 @@ async def main() -> None:
             description="You were injured in a fall on someone else's property.",
             display_order=1,
             questions=_FALL_QUESTIONS,
+            follow_up_slugs=_FALL_FOLLOW_UP_SLUGS,
             summary_body=_FALL_SUMMARY_BODY,
             estimate_min=5000,
             estimate_max=25000,

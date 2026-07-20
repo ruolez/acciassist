@@ -125,6 +125,7 @@ async def test_location_proposal_guaranteed_when_state_is_missing(
     location = advice["proposals"][0]
     assert location["id"] == "add-location"
     assert location["payload"]["type"] == "us_state_county"
+    assert location["payload"]["phase"] == "initial"
 
     # Applying it creates a real question of the composite type.
     itid = (await admin_client.get(f"/api/admin/intake-sessions/{sid}")).json()["injury_type_id"]
