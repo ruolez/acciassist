@@ -379,6 +379,7 @@ export type AppSettings = {
   openrouter_model: string | null;
   comps_enabled: boolean;
   comps_model: string | null;
+  extraction_fallback_model: string | null;
   sample_count: number;
   contingency_fee_pct: number;
 };

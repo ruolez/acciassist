@@ -513,6 +513,8 @@ class AppSettings(Base):
     # Estimate-pipeline knobs. comps_model NULL → main model + ":online".
     comps_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     comps_model: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # Runs extraction when the main model's attempt fails or returns no facts.
+    extraction_fallback_model: Mapped[str | None] = mapped_column(String(255), nullable=True)
     sample_count: Mapped[int] = mapped_column(Integer, nullable=False, default=5)
     # AcciAssist's service fee percentage (NOT an attorney contingency fee —
     # the product's pitch is that there is no attorney cut).

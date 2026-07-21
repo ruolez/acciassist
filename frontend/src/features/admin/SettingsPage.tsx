@@ -27,6 +27,7 @@ type FormState = {
   openrouter_model: string;
   comps_enabled: boolean;
   comps_model: string;
+  extraction_fallback_model: string;
   sample_count: string;
   contingency_fee_pct: string;
 };
@@ -46,6 +47,7 @@ function toForm(s: AppSettings): FormState {
     openrouter_model: s.openrouter_model ?? "",
     comps_enabled: s.comps_enabled,
     comps_model: s.comps_model ?? "",
+    extraction_fallback_model: s.extraction_fallback_model ?? "",
     sample_count: String(s.sample_count),
     contingency_fee_pct: String(s.contingency_fee_pct),
   };
@@ -243,6 +245,7 @@ export function SettingsPage() {
           openrouter_model: f.openrouter_model || null,
           comps_enabled: f.comps_enabled,
           comps_model: f.comps_model || null,
+          extraction_fallback_model: f.extraction_fallback_model || null,
           sample_count: Number(f.sample_count) || 5,
           // 0 is a legitimate fee — only fall back when the field is blank.
           contingency_fee_pct:
@@ -522,6 +525,36 @@ export function SettingsPage() {
                 {form.openrouter_model && (
                   <p className="muted model-current">Selected: {form.openrouter_model}</p>
                 )}
+              </div>
+              <div className="field field-wide">
+                <label>Extraction fallback model (optional)</label>
+                <ModelSelect
+                  keySaved={keySaved}
+                  value={form.extraction_fallback_model}
+                  onSelect={(id) => set({ extraction_fallback_model: id })}
+                  placeholder="Runs only when the main model's extraction fails"
+                />
+                <div className="inline-actions">
+                  {form.extraction_fallback_model ? (
+                    <>
+                      <p className="muted model-current">
+                        Selected: {form.extraction_fallback_model}
+                      </p>
+                      <button
+                        type="button"
+                        className="btn btn-ghost"
+                        onClick={() => set({ extraction_fallback_model: "" })}
+                      >
+                        None
+                      </button>
+                    </>
+                  ) : (
+                    <p className="field-hint">
+                      Rescues an estimate when the main model returns an unusable
+                      extraction — pick a fast, schema-reliable model.
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
             <div className="inline-actions">

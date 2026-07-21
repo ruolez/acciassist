@@ -336,6 +336,7 @@ class SettingsOut(ORMModel):
     openrouter_model: str | None
     comps_enabled: bool
     comps_model: str | None
+    extraction_fallback_model: str | None
     sample_count: int
     contingency_fee_pct: float
 
@@ -357,6 +358,7 @@ class SettingsIn(BaseModel):
     openrouter_model: str | None = Field(default=None, max_length=255)
     comps_enabled: bool = False
     comps_model: str | None = Field(default=None, max_length=255)
+    extraction_fallback_model: str | None = Field(default=None, max_length=255)
     sample_count: int = Field(default=5, ge=1, le=9)
     # AcciAssist's own service fee — the pitch is that there is NO attorney
     # taking a 33-40% contingency cut, so this can go all the way to 0.

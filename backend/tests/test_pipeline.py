@@ -262,6 +262,38 @@ class TestSchemaRepair:
         assert admin["status"] == "failed"
         assert "fact field is null" in admin["error"]
 
+    async def test_fallback_model_rescues_unusable_extraction(
+        self, admin_client, session_factory, install
+    ):
+        d = install(PipelineDispatcher())
+        # Calls 0-1 are the main model (initial + repair retry); call 2 is the
+        # fallback model's attempt.
+        d.hooks["case_extraction"] = lambda nth: (
+            {"meta": {}} if nth < 2 else EXTRACTION_REAR_END_CA
+        )
+        public, admin = await _run(
+            admin_client, session_factory, d, extraction_fallback_model="fallback/model"
+        )
+        assert public["status"] == "completed"
+        assert public["payout_max"] > 0
+        extraction_calls = [c for c in d.calls if c["schema_name"] == "case_extraction"]
+        assert [c["model"] for c in extraction_calls] == [
+            "test/model", "test/model", "fallback/model",
+        ]
+        assert admin["internals"]["extraction_model"] == "fallback/model"
+
+    async def test_fallback_model_also_failing_fails_the_run(
+        self, admin_client, session_factory, install
+    ):
+        d = install(PipelineDispatcher())
+        d.hooks["case_extraction"] = lambda nth: {"meta": {}}
+        _, admin = await _run(
+            admin_client, session_factory, d, extraction_fallback_model="fallback/model"
+        )
+        assert admin["status"] == "failed"
+        assert "fact field is null" in admin["error"]
+        assert sum(1 for c in d.calls if c["schema_name"] == "case_extraction") == 4
+
     async def test_notes_only_extraction_counts_as_factless(
         self, admin_client, session_factory, install
     ):

@@ -26,6 +26,7 @@ def _to_out(row: AppSettings) -> SettingsOut:
         openrouter_model=row.openrouter_model,
         comps_enabled=row.comps_enabled,
         comps_model=row.comps_model,
+        extraction_fallback_model=row.extraction_fallback_model,
         sample_count=row.sample_count,
         contingency_fee_pct=row.contingency_fee_pct,
     )
@@ -55,6 +56,7 @@ async def update_settings(data: SettingsIn, db: DbSession) -> SettingsOut:
     row.openrouter_model = data.openrouter_model
     row.comps_enabled = data.comps_enabled
     row.comps_model = data.comps_model or None
+    row.extraction_fallback_model = data.extraction_fallback_model or None
     row.sample_count = data.sample_count
     row.contingency_fee_pct = data.contingency_fee_pct
     await db.commit()

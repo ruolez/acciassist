@@ -200,15 +200,39 @@ async def _run(db: AsyncSession, estimate: CaseEstimate, session_id: uuid.UUID) 
 
     # ── Stage 1: extraction (failure fails the run) ────────────────────
     triples = await build_qa_triples(db, session)
+    fallback = settings.extraction_fallback_model
+    extraction_model = model
     try:
         with _Timer() as t:
             extraction = await run_extraction(api_key, model, injury_type_name, triples, referer)
     except Exception as exc:  # noqa: BLE001 — any extraction problem fails the run
-        await _set_stage(db, estimate, "extraction", "failed", error=str(exc))
-        await _fail(db, estimate, f"extraction_failed: {exc}")
-        return
+        if not fallback or fallback == model:
+            await _set_stage(db, estimate, "extraction", "failed", error=str(exc))
+            await _fail(db, estimate, f"extraction_failed: {exc}")
+            return
+        logger.warning(
+            "extraction with %s failed (%s); retrying with fallback model %s",
+            model, exc, fallback,
+        )
+        try:
+            with _Timer() as t:
+                extraction = await run_extraction(
+                    api_key, fallback, injury_type_name, triples, referer
+                )
+            extraction_model = fallback
+        except Exception as fallback_exc:  # noqa: BLE001
+            await _set_stage(
+                db, estimate, "extraction", "failed",
+                error=f"{exc}; fallback {fallback}: {fallback_exc}",
+            )
+            await _fail(db, estimate, f"extraction_failed: {fallback_exc}")
+            return
     estimate.internals = _merge(
-        estimate.internals, {"extraction": extraction.model_dump(mode="json")}
+        estimate.internals,
+        {
+            "extraction": extraction.model_dump(mode="json"),
+            "extraction_model": extraction_model,
+        },
     )
     await _set_stage(db, estimate, "extraction", "completed", ms=t.ms)
 
