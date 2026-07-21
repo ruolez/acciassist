@@ -406,6 +406,8 @@ class CaseUpdate(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+    # When the client marked this update as read in their portal.
+    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     case: Mapped["Case"] = relationship(back_populates="updates")
     admin: Mapped["AdminUser | None"] = relationship()
@@ -426,6 +428,9 @@ class CaseDocument(Base):
     content_type: Mapped[str] = mapped_column(String(100), nullable=False)
     size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
     stored_name: Mapped[str] = mapped_column(String(80), unique=True, nullable=False)
+    # What the client says this file is (medical_bill, photo, …); see
+    # services.documents.DOCUMENT_LABELS for the allowed set.
+    label: Mapped[str | None] = mapped_column(String(30), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

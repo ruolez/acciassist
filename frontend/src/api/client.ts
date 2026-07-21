@@ -41,9 +41,14 @@ export async function api<T>(path: string, options: Options = {}): Promise<T> {
 }
 
 /** Multipart upload — the browser sets the boundary header itself. */
-export async function apiUpload<T>(path: string, file: File): Promise<T> {
+export async function apiUpload<T>(
+  path: string,
+  file: File,
+  fields: Record<string, string> = {},
+): Promise<T> {
   const form = new FormData();
   form.append("file", file);
+  for (const [key, value] of Object.entries(fields)) form.append(key, value);
   const res = await fetch(`${API_BASE}${path}`, {
     method: "POST",
     credentials: "include",

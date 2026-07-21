@@ -39,8 +39,8 @@ const caseDetail: CaseDetail = {
   latest_update_body: null,
   latest_update_at: null,
   updates: [
-    { id: 1, kind: "message", body: "We requested your records.", created_at: "2026-07-02T00:00:00Z" },
-    { id: 2, kind: "stage_change", body: "Stage changed to Under review", created_at: "2026-07-03T00:00:00Z" },
+    { id: 1, kind: "message", body: "We requested your records.", created_at: "2026-07-02T00:00:00Z", read_at: null },
+    { id: 2, kind: "stage_change", body: "Stage changed to Under review", created_at: "2026-07-03T00:00:00Z", read_at: "2026-07-03T01:00:00Z" },
   ],
   summary: null,
   name: "Pat Smith",
@@ -57,6 +57,7 @@ const documents: CaseDocument[] = [
     original_name: "bill.pdf",
     content_type: "application/pdf",
     size_bytes: 1000,
+    label: "medical_bill",
     created_at: "2026-07-02T00:00:00Z",
   },
   {
@@ -64,6 +65,7 @@ const documents: CaseDocument[] = [
     original_name: "photo.jpg",
     content_type: "image/jpeg",
     size_bytes: 2000,
+    label: "photo",
     created_at: "2026-07-02T00:00:00Z",
   },
 ];
@@ -114,13 +116,15 @@ describe("CaseLayout", () => {
     expect(Array.from(active).map((el) => el.textContent)).toEqual(["Overview"]);
   });
 
-  test("documents nav link shows the count badge and updates shows its count", async () => {
+  test("documents badge shows total; updates badge shows unread count", async () => {
     renderAt("/account/cases/4/updates");
     await screen.findByText("We requested your records.");
     await waitFor(() => {
       const badges = document.querySelectorAll(".case-nav-badge");
-      expect(Array.from(badges).map((b) => b.textContent)).toEqual(["2", "2"]);
+      expect(Array.from(badges).map((b) => b.textContent)).toEqual(["2", "1 new"]);
     });
+    expect(screen.getByRole("button", { name: /mark all as read/i })).toBeInTheDocument();
+    expect(screen.getAllByText("New")).toHaveLength(1);
   });
 
   test("details route renders contact details", async () => {

@@ -478,6 +478,7 @@ class CaseUpdateOut(ORMModel):
     kind: CaseUpdateKind
     body: str
     created_at: datetime
+    read_at: datetime | None = None
 
 
 class CaseDocumentOut(ORMModel):
@@ -485,6 +486,7 @@ class CaseDocumentOut(ORMModel):
     original_name: str
     content_type: str
     size_bytes: int
+    label: str | None = None
     created_at: datetime
 
 

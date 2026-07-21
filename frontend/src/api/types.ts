@@ -297,6 +297,7 @@ export type CaseUpdate = {
   kind: "message" | "stage_change";
   body: string;
   created_at: string;
+  read_at: string | null;
 };
 
 export type CaseListItem = {
@@ -311,11 +312,20 @@ export type CaseListItem = {
   latest_update_at: string | null;
 };
 
+export type DocumentLabel =
+  | "medical_bill"
+  | "medical_record"
+  | "photo"
+  | "insurance"
+  | "income"
+  | "other";
+
 export type CaseDocument = {
   id: number;
   original_name: string;
   content_type: string;
   size_bytes: number;
+  label: DocumentLabel | null;
   created_at: string;
 };
 

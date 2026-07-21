@@ -232,6 +232,16 @@ async def complete_followup(
     return await _case_detail_payload(db, case)
 
 
+@router.post("/cases/{case_id}/updates/mark-read", status_code=204)
+async def mark_updates_read(case_id: int, user: CurrentUser, db: DbSession) -> None:
+    case = await _my_case(db, case_id, user.id)
+    now = datetime.now(UTC)
+    for update in case.updates:
+        if update.read_at is None:
+            update.read_at = now
+    await db.commit()
+
+
 @router.patch("/profile", response_model=UserOut)
 async def update_profile(data: ProfileIn, user: CurrentUser, db: DbSession) -> User:
     user.name = data.name

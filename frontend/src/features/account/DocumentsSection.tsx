@@ -2,11 +2,30 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 
 import { api, ApiError, apiUpload } from "../../api/client";
-import type { CaseDocument } from "../../api/types";
+import type { CaseDocument, DocumentLabel } from "../../api/types";
 import { formatBytes, relativeTime } from "../../lib/format";
 
 const ACCEPT = ".pdf,.jpg,.jpeg,.png,.webp,.heic,.doc,.docx";
 const MAX_MB = 15;
+
+export const DOCUMENT_LABELS: Record<DocumentLabel, string> = {
+  medical_bill: "Medical bill",
+  medical_record: "Medical record",
+  photo: "Photo",
+  insurance: "Insurance letter",
+  income: "Proof of income",
+  other: "Other",
+};
+
+type StagedFile = {
+  key: string;
+  file: File;
+  label: DocumentLabel;
+};
+
+function guessLabel(file: File): DocumentLabel {
+  return file.type.startsWith("image/") ? "photo" : "medical_bill";
+}
 
 function DocIcon({ contentType }: { contentType: string }) {
   const isImage = contentType.startsWith("image/");
@@ -43,7 +62,8 @@ export function DocumentsSection({ caseId }: { caseId: string }) {
   const queryClient = useQueryClient();
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
-  const [uploading, setUploading] = useState<string[]>([]);
+  const [staged, setStaged] = useState<StagedFile[]>([]);
+  const [uploading, setUploading] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
 
   const KEY = ["user", "cases", caseId, "documents"];
@@ -58,32 +78,55 @@ export function DocumentsSection({ caseId }: { caseId: string }) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: KEY }),
   });
 
-  const uploadFiles = async (files: FileList | File[]) => {
-    setErrors([]);
-    const list = Array.from(files);
+  const stageFiles = (files: FileList | File[]) => {
     const problems: string[] = [];
-    for (const file of list) {
+    const accepted: StagedFile[] = [];
+    for (const file of Array.from(files)) {
       if (file.size > MAX_MB * 1024 * 1024) {
         problems.push(`${file.name}: larger than ${MAX_MB} MB.`);
         continue;
       }
-      setUploading((u) => [...u, file.name]);
+      accepted.push({
+        key: `${file.name}-${file.size}-${file.lastModified}`,
+        file,
+        label: guessLabel(file),
+      });
+    }
+    setErrors(problems);
+    setStaged((s) => {
+      const existing = new Set(s.map((f) => f.key));
+      return [...s, ...accepted.filter((f) => !existing.has(f.key))];
+    });
+  };
+
+  const setLabel = (key: string, label: DocumentLabel) =>
+    setStaged((s) => s.map((f) => (f.key === key ? { ...f, label } : f)));
+
+  const unstage = (key: string) => setStaged((s) => s.filter((f) => f.key !== key));
+
+  const uploadAll = async () => {
+    setUploading(true);
+    setErrors([]);
+    const problems: string[] = [];
+    for (const item of staged) {
       try {
-        await apiUpload<CaseDocument>(`/me/cases/${caseId}/documents`, file);
+        await apiUpload<CaseDocument>(`/me/cases/${caseId}/documents`, item.file, {
+          label: item.label,
+        });
+        unstage(item.key);
       } catch (e) {
         problems.push(
-          `${file.name}: ${e instanceof ApiError ? e.message : "upload failed."}`,
+          `${item.file.name}: ${e instanceof ApiError ? e.message : "upload failed."}`,
         );
-      } finally {
-        setUploading((u) => u.filter((n) => n !== file.name));
       }
     }
     setErrors(problems);
+    setUploading(false);
     queryClient.invalidateQueries({ queryKey: KEY });
   };
 
   return (
-    <div className="portal-section">
+    <div className="portal-section portal-section-first">
       <h2>Your documents</h2>
       <p className="portal-section-sub">
         Medical bills, records, photos, and letters all strengthen your case. Upload them
@@ -100,7 +143,7 @@ export function DocumentsSection({ caseId }: { caseId: string }) {
         onDrop={(e) => {
           e.preventDefault();
           setDragging(false);
-          if (e.dataTransfer.files.length) uploadFiles(e.dataTransfer.files);
+          if (e.dataTransfer.files.length) stageFiles(e.dataTransfer.files);
         }}
       >
         <span className="dropzone-icon" aria-hidden="true">
@@ -137,17 +180,68 @@ export function DocumentsSection({ caseId }: { caseId: string }) {
           multiple
           hidden
           onChange={(e) => {
-            if (e.target.files?.length) uploadFiles(e.target.files);
+            if (e.target.files?.length) stageFiles(e.target.files);
             e.target.value = "";
           }}
         />
       </div>
 
-      {uploading.map((name) => (
-        <p key={name} className="doc-uploading">
-          <span className="doc-spinner" aria-hidden="true" /> Uploading {name}…
-        </p>
-      ))}
+      {staged.length > 0 && (
+        <div className="card staged-card">
+          <p className="staged-head">
+            Tell us what {staged.length === 1 ? "this file is" : "these files are"} so
+            our team can file {staged.length === 1 ? "it" : "them"} correctly:
+          </p>
+          {staged.map((item) => (
+            <div key={item.key} className="staged-row">
+              <DocIcon contentType={item.file.type} />
+              <span className="doc-main">
+                <span className="doc-name">{item.file.name}</span>
+                <span className="doc-meta">{formatBytes(item.file.size)}</span>
+              </span>
+              <select
+                className="select staged-select"
+                aria-label={`Document type for ${item.file.name}`}
+                value={item.label}
+                disabled={uploading}
+                onChange={(e) => setLabel(item.key, e.target.value as DocumentLabel)}
+              >
+                {Object.entries(DOCUMENT_LABELS).map(([value, text]) => (
+                  <option key={value} value={value}>
+                    {text}
+                  </option>
+                ))}
+              </select>
+              <button
+                className="doc-remove"
+                disabled={uploading}
+                onClick={() => unstage(item.key)}
+              >
+                Remove
+              </button>
+            </div>
+          ))}
+          <div className="staged-actions">
+            <button className="btn btn-primary" disabled={uploading} onClick={uploadAll}>
+              {uploading ? (
+                <>
+                  <span className="doc-spinner" aria-hidden="true" /> Uploading…
+                </>
+              ) : (
+                `Upload ${staged.length} file${staged.length === 1 ? "" : "s"}`
+              )}
+            </button>
+            <button
+              className="btn btn-ghost"
+              disabled={uploading}
+              onClick={() => setStaged([])}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
       {errors.map((msg) => (
         <p key={msg} className="error-text doc-error">
           {msg}
@@ -170,6 +264,7 @@ export function DocumentsSection({ caseId }: { caseId: string }) {
                   {formatBytes(d.size_bytes)} · added {relativeTime(d.created_at)}
                 </span>
               </span>
+              {d.label && <span className="doc-label">{DOCUMENT_LABELS[d.label]}</span>}
               <button
                 className="doc-remove"
                 aria-label={`Remove ${d.original_name}`}
@@ -184,7 +279,7 @@ export function DocumentsSection({ caseId }: { caseId: string }) {
           ))}
         </div>
       )}
-      {docs && docs.length === 0 && uploading.length === 0 && (
+      {docs && docs.length === 0 && staged.length === 0 && (
         <p className="doc-none muted">
           Nothing uploaded yet — even phone photos of bills and paperwork help.
         </p>

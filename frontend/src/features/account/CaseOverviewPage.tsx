@@ -85,6 +85,7 @@ export function CaseOverviewPage() {
           {latest ? (
             <>
               <p className="snapshot-body">
+                {latest.read_at === null && <span className="update-new-chip">New</span>}
                 {latest.body.length > 140 ? `${latest.body.slice(0, 140)}…` : latest.body}
               </p>
               <span className="muted snapshot-when">{relativeTime(latest.created_at)}</span>

@@ -28,6 +28,25 @@ ALLOWED_TYPES: dict[str, str] = {
 
 _CHUNK = 1024 * 1024
 
+# Client-chosen document labels; the portal offers exactly this set.
+DOCUMENT_LABELS = {
+    "medical_bill",
+    "medical_record",
+    "photo",
+    "insurance",
+    "income",
+    "other",
+}
+
+
+def validate_label(label: str | None) -> str | None:
+    if label is None or label == "":
+        return None
+    if label not in DOCUMENT_LABELS:
+        allowed = ", ".join(sorted(DOCUMENT_LABELS))
+        raise AppError(422, "invalid_label", f"Label must be one of: {allowed}.")
+    return label
+
 
 def upload_root() -> Path:
     root = Path(settings.upload_dir)

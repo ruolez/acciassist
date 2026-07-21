@@ -1,4 +1,4 @@
-from fastapi import APIRouter, UploadFile
+from fastapi import APIRouter, Form, UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy import func, select
 
@@ -12,6 +12,7 @@ from app.services.documents import (
     delete_stored_file,
     document_path,
     save_upload,
+    validate_label,
 )
 
 router = APIRouter()
@@ -51,9 +52,14 @@ async def list_documents(
     "/cases/{case_id}/documents", response_model=CaseDocumentOut, status_code=201
 )
 async def upload_document(
-    case_id: int, file: UploadFile, user: CurrentUser, db: DbSession
+    case_id: int,
+    file: UploadFile,
+    user: CurrentUser,
+    db: DbSession,
+    label: str | None = Form(default=None),
 ) -> CaseDocument:
     case = await _my_case(db, case_id, user.id)
+    label = validate_label(label)
     count = await db.scalar(
         select(func.count()).select_from(CaseDocument).where(CaseDocument.case_id == case.id)
     )
@@ -70,6 +76,7 @@ async def upload_document(
         content_type=content_type,
         size_bytes=size,
         stored_name=stored_name,
+        label=label,
     )
     db.add(doc)
     await db.commit()

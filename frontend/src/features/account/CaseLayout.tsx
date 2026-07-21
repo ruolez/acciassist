@@ -158,8 +158,10 @@ export function CaseLayout() {
           <NavLink to="updates" className={navCls}>
             <NavIcon name="bell" />
             Updates
-            {data.updates.length > 0 && (
-              <span className="case-nav-badge">{data.updates.length}</span>
+            {data.updates.some((u) => u.read_at === null) && (
+              <span className="case-nav-badge unread">
+                {data.updates.filter((u) => u.read_at === null).length} new
+              </span>
             )}
           </NavLink>
           <NavLink to="details" className={navCls}>

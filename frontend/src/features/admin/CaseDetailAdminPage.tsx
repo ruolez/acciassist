@@ -13,7 +13,7 @@ import type {
 } from "../../api/types";
 import { CASE_STAGES, STAGE_LABELS } from "../account/stages";
 import { AdviceCard } from "./AdviceCard";
-import { formatBytes, relativeTime } from "../../lib/format";
+import { formatBytes, humanize, relativeTime } from "../../lib/format";
 import { PipelineEstimateCard } from "./PipelineEstimateCard";
 import { useActionError } from "./useActionError";
 import { usePageTitle } from "../../lib/usePageTitle";
@@ -34,6 +34,7 @@ function ClientDocumentsCard({ caseId }: { caseId: string }) {
             <a href={`/api/admin/cases/${caseId}/documents/${d.id}/download`}>
               {d.original_name}
             </a>
+            {d.label && <span className="badge badge-off">{humanize(d.label)}</span>}
             <span className="muted">
               {formatBytes(d.size_bytes)} · {relativeTime(d.created_at)}
             </span>
