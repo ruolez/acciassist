@@ -242,6 +242,19 @@ async def mark_updates_read(case_id: int, user: CurrentUser, db: DbSession) -> N
     await db.commit()
 
 
+@router.post("/cases/{case_id}/updates/{update_id}/read", status_code=204)
+async def mark_update_read(
+    case_id: int, update_id: int, user: CurrentUser, db: DbSession
+) -> None:
+    case = await _my_case(db, case_id, user.id)
+    update = next((u for u in case.updates if u.id == update_id), None)
+    if update is None:
+        raise AppError(404, "not_found", "Update not found")
+    if update.read_at is None:
+        update.read_at = datetime.now(UTC)
+    await db.commit()
+
+
 @router.patch("/profile", response_model=UserOut)
 async def update_profile(data: ProfileIn, user: CurrentUser, db: DbSession) -> User:
     user.name = data.name

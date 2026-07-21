@@ -18,6 +18,12 @@ export function CaseUpdatesPage() {
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: ["user", "cases", caseId] }),
   });
+  const markOneRead = useMutation({
+    mutationFn: (updateId: number) =>
+      api(`/me/cases/${caseId}/updates/${updateId}/read`, { method: "POST" }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["user", "cases", caseId] }),
+  });
 
   const updates = [...data.updates].reverse();
   const unread = updates.filter((u) => u.read_at === null).length;
@@ -54,11 +60,22 @@ export function CaseUpdatesPage() {
               <div className={`update-item ${u.read_at === null ? "unread" : ""}`}>
                 {u.read_at === null && <span className="update-new-chip">New</span>}
                 <p className="update-item-body">{u.body}</p>
-                <span
-                  className="update-item-date"
-                  title={new Date(u.created_at).toLocaleString()}
-                >
-                  {relativeTime(u.created_at)}
+                <span className="update-item-foot">
+                  <span
+                    className="update-item-date"
+                    title={new Date(u.created_at).toLocaleString()}
+                  >
+                    {relativeTime(u.created_at)}
+                  </span>
+                  {u.read_at === null && (
+                    <button
+                      className="update-read-btn"
+                      disabled={markOneRead.isPending}
+                      onClick={() => markOneRead.mutate(u.id)}
+                    >
+                      Mark as read
+                    </button>
+                  )}
                 </span>
               </div>
             </div>

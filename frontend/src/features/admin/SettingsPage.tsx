@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { api, ApiError } from "../../api/client";
 import type { AppSettings, EmailLogEntry, OpenRouterModel } from "../../api/types";
+import { DocumentTypesCard } from "./DocumentTypesCard";
 import { humanize } from "../../lib/format";
 import { useActionError } from "./useActionError";
 import { usePageTitle } from "../../lib/usePageTitle";
@@ -10,7 +11,7 @@ import "./admin.css";
 
 const KEY = ["admin", "settings"];
 
-type Tab = "email" | "ai";
+type Tab = "email" | "ai" | "documents";
 
 type FormState = {
   smtp_host: string;
@@ -240,7 +241,17 @@ export function SettingsPage() {
         >
           AI &amp; Estimates
         </button>
+        <button
+          role="tab"
+          aria-selected={tab === "documents"}
+          className={`tab ${tab === "documents" ? "active" : ""}`}
+          onClick={() => setTab("documents")}
+        >
+          Documents
+        </button>
       </div>
+
+      {tab === "documents" && <DocumentTypesCard />}
 
       {tab === "email" && (
         <>

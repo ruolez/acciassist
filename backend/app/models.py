@@ -413,6 +413,21 @@ class CaseUpdate(Base):
     admin: Mapped["AdminUser | None"] = relationship()
 
 
+class DocumentType(Base):
+    """Admin-configurable labels clients can attach to uploaded documents
+    ("Medical bill", "Photo", …). Deleting a type does not touch documents
+    already labeled with it — the label is a snapshot string."""
+
+    __tablename__ = "document_types"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    display_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
 class CaseDocument(Base):
     """A file the client uploaded to support their case (bills, records,
     photos). The file lives on disk under settings.upload_dir keyed by

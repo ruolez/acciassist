@@ -2,29 +2,25 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 
 import { api, ApiError, apiUpload } from "../../api/client";
-import type { CaseDocument, DocumentLabel } from "../../api/types";
+import type { CaseDocument, DocumentType } from "../../api/types";
 import { formatBytes, relativeTime } from "../../lib/format";
 
 const ACCEPT = ".pdf,.jpg,.jpeg,.png,.webp,.heic,.doc,.docx";
 const MAX_MB = 15;
 
-export const DOCUMENT_LABELS: Record<DocumentLabel, string> = {
-  medical_bill: "Medical bill",
-  medical_record: "Medical record",
-  photo: "Photo",
-  insurance: "Insurance letter",
-  income: "Proof of income",
-  other: "Other",
-};
-
 type StagedFile = {
   key: string;
   file: File;
-  label: DocumentLabel;
+  label: string;
 };
 
-function guessLabel(file: File): DocumentLabel {
-  return file.type.startsWith("image/") ? "photo" : "medical_bill";
+function guessLabel(file: File, types: DocumentType[]): string {
+  if (types.length === 0) return "";
+  if (file.type.startsWith("image/")) {
+    const photo = types.find((t) => t.name.toLowerCase() === "photo");
+    if (photo) return photo.name;
+  }
+  return types[0].name;
 }
 
 function DocIcon({ contentType }: { contentType: string }) {
@@ -71,6 +67,11 @@ export function DocumentsSection({ caseId }: { caseId: string }) {
     queryKey: KEY,
     queryFn: () => api<CaseDocument[]>(`/me/cases/${caseId}/documents`),
   });
+  const { data: docTypes = [] } = useQuery({
+    queryKey: ["user", "document-types"],
+    queryFn: () => api<DocumentType[]>("/me/document-types"),
+    staleTime: 5 * 60 * 1000,
+  });
 
   const removeDoc = useMutation({
     mutationFn: (docId: number) =>
@@ -89,7 +90,7 @@ export function DocumentsSection({ caseId }: { caseId: string }) {
       accepted.push({
         key: `${file.name}-${file.size}-${file.lastModified}`,
         file,
-        label: guessLabel(file),
+        label: guessLabel(file, docTypes),
       });
     }
     setErrors(problems);
@@ -99,7 +100,7 @@ export function DocumentsSection({ caseId }: { caseId: string }) {
     });
   };
 
-  const setLabel = (key: string, label: DocumentLabel) =>
+  const setLabel = (key: string, label: string) =>
     setStaged((s) => s.map((f) => (f.key === key ? { ...f, label } : f)));
 
   const unstage = (key: string) => setStaged((s) => s.filter((f) => f.key !== key));
@@ -110,9 +111,11 @@ export function DocumentsSection({ caseId }: { caseId: string }) {
     const problems: string[] = [];
     for (const item of staged) {
       try {
-        await apiUpload<CaseDocument>(`/me/cases/${caseId}/documents`, item.file, {
-          label: item.label,
-        });
+        await apiUpload<CaseDocument>(
+          `/me/cases/${caseId}/documents`,
+          item.file,
+          item.label ? { label: item.label } : {},
+        );
         unstage(item.key);
       } catch (e) {
         problems.push(
@@ -203,12 +206,13 @@ export function DocumentsSection({ caseId }: { caseId: string }) {
                 className="select staged-select"
                 aria-label={`Document type for ${item.file.name}`}
                 value={item.label}
-                disabled={uploading}
-                onChange={(e) => setLabel(item.key, e.target.value as DocumentLabel)}
+                disabled={uploading || docTypes.length === 0}
+                onChange={(e) => setLabel(item.key, e.target.value)}
               >
-                {Object.entries(DOCUMENT_LABELS).map(([value, text]) => (
-                  <option key={value} value={value}>
-                    {text}
+                {docTypes.length === 0 && <option value="">No types configured</option>}
+                {docTypes.map((t) => (
+                  <option key={t.id} value={t.name}>
+                    {t.name}
                   </option>
                 ))}
               </select>
@@ -264,7 +268,7 @@ export function DocumentsSection({ caseId }: { caseId: string }) {
                   {formatBytes(d.size_bytes)} · added {relativeTime(d.created_at)}
                 </span>
               </span>
-              {d.label && <span className="doc-label">{DOCUMENT_LABELS[d.label]}</span>}
+              {d.label && <span className="doc-label">{d.label}</span>}
               <button
                 className="doc-remove"
                 aria-label={`Remove ${d.original_name}`}

@@ -1711,3 +1711,27 @@
 .admin-doc-row a:hover {
   text-decoration: underline;
 }
+
+/* ── Document types manager ── */
+.doc-type-form {
+  padding: 0;
+  margin-bottom: var(--space-2);
+  width: 100%;
+}
+.doc-type-list {
+  width: 100%;
+}
+.doc-type-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-sm);
+}
+.doc-type-name {
+  font-weight: 600;
+  font-size: 0.94rem;
+}

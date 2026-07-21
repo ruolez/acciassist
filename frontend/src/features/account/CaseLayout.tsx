@@ -135,6 +135,7 @@ export function CaseLayout() {
             </span>
           </div>
         </div>
+        <span className="case-nav-heading">Your case</span>
         <nav className="case-nav" aria-label="Case sections">
           <NavLink to="." end className={navCls}>
             <NavIcon name="home" />
@@ -175,7 +176,9 @@ export function CaseLayout() {
         </p>
       </aside>
       <div className="case-content">
-        <Outlet context={{ user, caseDetail: data } satisfies CaseOutletContext} />
+        <div className="case-content-inner">
+          <Outlet context={{ user, caseDetail: data } satisfies CaseOutletContext} />
+        </div>
       </div>
     </div>
   );

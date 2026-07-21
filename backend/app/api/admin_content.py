@@ -1,11 +1,13 @@
 from fastapi import APIRouter
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
 from app.deps import DbSession
 from app.errors import AppError
-from app.models import InjuryType, Question, SummaryTemplate
+from app.models import DocumentType, InjuryType, Question, SummaryTemplate
 from app.schemas import (
+    DocumentTypeIn,
+    DocumentTypeOut,
     InjuryTypeIn,
     InjuryTypeOut,
     QuestionIn,
@@ -229,3 +231,45 @@ async def update_summary_template(
     await db.commit()
     await db.refresh(tmpl)
     return tmpl
+
+
+# ── Document types (labels clients pick when uploading) ───────────────
+@router.get("/document-types", response_model=list[DocumentTypeOut])
+async def list_document_types(db: DbSession) -> list[DocumentType]:
+    rows = await db.scalars(
+        select(DocumentType).order_by(DocumentType.display_order, DocumentType.id)
+    )
+    return list(rows)
+
+
+@router.post("/document-types", response_model=DocumentTypeOut, status_code=201)
+async def create_document_type(data: DocumentTypeIn, db: DbSession) -> DocumentType:
+    name = data.name.strip()
+    if not name:
+        raise AppError(422, "invalid_name", "Enter a name for the document type")
+    existing = await db.scalar(
+        select(DocumentType).where(func.lower(DocumentType.name) == name.lower())
+    )
+    if existing is not None:
+        raise AppError(409, "duplicate_name", "That document type already exists")
+    max_order = await db.scalar(select(func.max(DocumentType.display_order)))
+    doc_type = DocumentType(name=name, display_order=(max_order or 0) + 1)
+    db.add(doc_type)
+    await db.commit()
+    await db.refresh(doc_type)
+    return doc_type
+
+
+@router.delete("/document-types/{type_id}", status_code=204)
+async def delete_document_type(type_id: int, db: DbSession) -> None:
+    doc_type = await db.get(DocumentType, type_id)
+    if doc_type is None:
+        raise AppError(404, "not_found", "Document type not found")
+    await db.delete(doc_type)
+    await db.commit()
+
+
+@router.post("/document-types/reorder", status_code=204)
+async def reorder_document_types(data: ReorderIn, db: DbSession) -> None:
+    await _apply_order(db, DocumentType, data.ordered_ids)
+    await db.commit()

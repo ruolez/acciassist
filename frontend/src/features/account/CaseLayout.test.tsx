@@ -57,7 +57,7 @@ const documents: CaseDocument[] = [
     original_name: "bill.pdf",
     content_type: "application/pdf",
     size_bytes: 1000,
-    label: "medical_bill",
+    label: "Medical bill",
     created_at: "2026-07-02T00:00:00Z",
   },
   {
@@ -65,7 +65,7 @@ const documents: CaseDocument[] = [
     original_name: "photo.jpg",
     content_type: "image/jpeg",
     size_bytes: 2000,
-    label: "photo",
+    label: "Photo",
     created_at: "2026-07-02T00:00:00Z",
   },
 ];
@@ -73,6 +73,11 @@ const documents: CaseDocument[] = [
 function renderAt(path: string, detail: CaseDetail | Error = caseDetail) {
   apiMock.mockImplementation((requested: string) => {
     if (requested === "/me/cases/4/documents") return Promise.resolve(documents);
+    if (requested === "/me/document-types")
+      return Promise.resolve([
+        { id: 1, name: "Medical bill", display_order: 0 },
+        { id: 2, name: "Photo", display_order: 1 },
+      ]);
     if (requested === "/me/cases") return Promise.resolve([{ id: 4 }, { id: 9 }]);
     if (requested === "/me/cases/4") {
       return detail instanceof Error ? Promise.reject(detail) : Promise.resolve(detail);

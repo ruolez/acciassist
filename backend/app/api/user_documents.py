@@ -5,17 +5,24 @@ from sqlalchemy import func, select
 from app.config import settings
 from app.deps import CurrentUser, DbSession
 from app.errors import AppError
-from app.models import Case, CaseDocument
-from app.schemas import CaseDocumentOut
+from app.models import Case, CaseDocument, DocumentType
+from app.schemas import CaseDocumentOut, DocumentTypeOut
 from app.services.documents import (
     clean_filename,
     delete_stored_file,
     document_path,
     save_upload,
-    validate_label,
 )
 
 router = APIRouter()
+
+
+@router.get("/document-types", response_model=list[DocumentTypeOut])
+async def list_document_types(db: DbSession) -> list[DocumentType]:
+    rows = await db.scalars(
+        select(DocumentType).order_by(DocumentType.display_order, DocumentType.id)
+    )
+    return list(rows)
 
 
 async def _my_case(db: DbSession, case_id: int, user_id: int) -> Case:
@@ -59,7 +66,12 @@ async def upload_document(
     label: str | None = Form(default=None),
 ) -> CaseDocument:
     case = await _my_case(db, case_id, user.id)
-    label = validate_label(label)
+    if label:
+        known = await db.scalar(select(DocumentType).where(DocumentType.name == label))
+        if known is None:
+            raise AppError(422, "invalid_label", "Pick one of the listed document types.")
+    else:
+        label = None
     count = await db.scalar(
         select(func.count()).select_from(CaseDocument).where(CaseDocument.case_id == case.id)
     )

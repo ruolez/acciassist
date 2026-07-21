@@ -312,20 +312,18 @@ export type CaseListItem = {
   latest_update_at: string | null;
 };
 
-export type DocumentLabel =
-  | "medical_bill"
-  | "medical_record"
-  | "photo"
-  | "insurance"
-  | "income"
-  | "other";
+export type DocumentType = {
+  id: number;
+  name: string;
+  display_order: number;
+};
 
 export type CaseDocument = {
   id: number;
   original_name: string;
   content_type: string;
   size_bytes: number;
-  label: DocumentLabel | null;
+  label: string | null;
   created_at: string;
 };
 

@@ -781,25 +781,47 @@
 
 /* ── Case shell: left sidenav + section pages ──────────────────────── */
 .portal-main:has(.case-shell) {
-  max-width: 1120px;
+  max-width: none;
+  padding: 0;
 }
 .case-shell {
-  display: grid;
-  grid-template-columns: 220px minmax(0, 1fr);
-  gap: var(--space-8);
-  align-items: start;
+  display: flex;
+  align-items: stretch;
+  min-height: calc(100vh - 61px);
 }
+/* Full-height panel attached to the left edge — same shell language as the
+   admin sidebar. */
 .case-sidenav {
+  width: 260px;
+  flex: 0 0 260px;
   position: sticky;
-  top: 76px;
+  top: 61px;
+  height: calc(100vh - 61px);
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
   background: var(--surface);
-  border: 1px solid var(--outline);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-1);
+  border-right: 1px solid var(--outline);
   padding: var(--space-5) var(--space-4);
+}
+.case-nav-heading {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--text-secondary);
+  padding: 0 var(--space-3);
+  margin-bottom: calc(-1 * var(--space-3));
+}
+.case-content {
+  flex: 1;
+  min-width: 0;
+  padding: var(--space-6) var(--space-6) var(--space-10);
+}
+.case-content-inner {
+  max-width: 880px;
+  margin: 0 auto;
 }
 .case-side-head {
   display: flex;
@@ -886,7 +908,7 @@
   background: var(--gold-deep);
 }
 .case-side-help {
-  margin: 0;
+  margin: auto 0 0;
   padding-top: var(--space-4);
   border-top: 1px solid var(--outline);
   font-size: 0.82rem;
@@ -951,13 +973,21 @@
   }
   .case-sidenav {
     position: static;
+    width: auto;
+    flex: none;
+    height: auto;
+    overflow: visible;
     gap: var(--space-3);
-    margin-bottom: var(--space-5);
+    margin-bottom: 0;
     background: none;
     border: none;
-    border-radius: 0;
-    box-shadow: none;
-    padding: 0;
+    padding: var(--space-4) var(--space-4) 0;
+  }
+  .case-nav-heading {
+    display: none;
+  }
+  .case-content {
+    padding: var(--space-4) var(--space-4) var(--space-8);
   }
   .case-nav {
     flex-direction: row;
@@ -1094,4 +1124,28 @@
   .staged-select {
     flex-basis: 100%;
   }
+}
+
+/* Per-update read control */
+.update-item-foot {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-4);
+  margin-top: var(--space-2);
+}
+.update-item-foot .update-item-date {
+  margin-top: 0;
+}
+.update-read-btn {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--navy);
+  cursor: pointer;
+}
+.update-read-btn:hover {
+  text-decoration: underline;
 }

@@ -481,6 +481,16 @@ class CaseUpdateOut(ORMModel):
     read_at: datetime | None = None
 
 
+class DocumentTypeIn(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+
+
+class DocumentTypeOut(ORMModel):
+    id: int
+    name: str
+    display_order: int
+
+
 class CaseDocumentOut(ORMModel):
     id: int
     original_name: str

@@ -145,17 +145,22 @@ class TestClientDocuments:
 
 
 class TestDocumentLabels:
-    async def test_upload_with_label_roundtrips(self, user_client):
+    async def test_upload_with_admin_defined_label(self, user_client, admin_client):
+        created = await admin_client.post(
+            "/api/admin/document-types", json={"name": "Medical bill"}
+        )
+        assert created.status_code == 201
+
         cid = await _case_id(user_client)
         resp = await user_client.post(
             f"/api/me/cases/{cid}/documents",
             files=_pdf(),
-            data={"label": "medical_bill"},
+            data={"label": "Medical bill"},
         )
         assert resp.status_code == 201, resp.text
-        assert resp.json()["label"] == "medical_bill"
+        assert resp.json()["label"] == "Medical bill"
         listing = (await user_client.get(f"/api/me/cases/{cid}/documents")).json()
-        assert listing[0]["label"] == "medical_bill"
+        assert listing[0]["label"] == "Medical bill"
 
     async def test_label_is_optional(self, user_client):
         cid = await _case_id(user_client)
@@ -163,15 +168,59 @@ class TestDocumentLabels:
         assert resp.status_code == 201
         assert resp.json()["label"] is None
 
-    async def test_rejects_unknown_label(self, user_client):
+    async def test_rejects_label_not_in_document_types(self, user_client):
         cid = await _case_id(user_client)
         resp = await user_client.post(
             f"/api/me/cases/{cid}/documents",
             files=_pdf(),
-            data={"label": "tax_return"},
+            data={"label": "Tax return"},
         )
         assert resp.status_code == 422
         assert resp.json()["error"]["code"] == "invalid_label"
+
+    async def test_patient_lists_types_in_admin_order(self, user_client, admin_client):
+        ids = []
+        for name in ["Photo", "Medical bill", "Other"]:
+            resp = await admin_client.post(
+                "/api/admin/document-types", json={"name": name}
+            )
+            ids.append(resp.json()["id"])
+        await admin_client.post(
+            "/api/admin/document-types/reorder",
+            json={"ordered_ids": [ids[1], ids[0], ids[2]]},
+        )
+        listing = (await user_client.get("/api/me/document-types")).json()
+        assert [t["name"] for t in listing] == ["Medical bill", "Photo", "Other"]
+
+    async def test_admin_rejects_duplicate_type(self, admin_client):
+        first = await admin_client.post(
+            "/api/admin/document-types", json={"name": "Photo"}
+        )
+        assert first.status_code == 201
+        dup = await admin_client.post(
+            "/api/admin/document-types", json={"name": "photo"}
+        )
+        assert dup.status_code == 409
+
+    async def test_admin_deletes_type_but_labels_survive(
+        self, user_client, admin_client
+    ):
+        created = (
+            await admin_client.post(
+                "/api/admin/document-types", json={"name": "Photo"}
+            )
+        ).json()
+        cid = await _case_id(user_client)
+        doc = (
+            await user_client.post(
+                f"/api/me/cases/{cid}/documents", files=_pdf(), data={"label": "Photo"}
+            )
+        ).json()
+        resp = await admin_client.delete(f"/api/admin/document-types/{created['id']}")
+        assert resp.status_code == 204
+        listing = (await user_client.get(f"/api/me/cases/{cid}/documents")).json()
+        assert listing[0]["id"] == doc["id"]
+        assert listing[0]["label"] == "Photo"
 
 
 class TestUpdateReadState:
@@ -191,6 +240,28 @@ class TestUpdateReadState:
 
         detail = (await user_client.get(f"/api/me/cases/{cid}")).json()
         assert all(u["read_at"] is not None for u in detail["updates"])
+
+    async def test_mark_single_update_read(self, user_client, admin_client):
+        cid = await _case_id(user_client)
+        for body in ["First update.", "Second update."]:
+            await admin_client.post(
+                f"/api/admin/cases/{cid}/updates", json={"body": body}
+            )
+        detail = (await user_client.get(f"/api/me/cases/{cid}")).json()
+        first_id = detail["updates"][0]["id"]
+
+        resp = await user_client.post(
+            f"/api/me/cases/{cid}/updates/{first_id}/read"
+        )
+        assert resp.status_code == 204
+
+        detail = (await user_client.get(f"/api/me/cases/{cid}")).json()
+        by_id = {u["id"]: u["read_at"] for u in detail["updates"]}
+        assert by_id[first_id] is not None
+        assert sum(1 for v in by_id.values() if v is None) == 1
+
+        missing = await user_client.post(f"/api/me/cases/{cid}/updates/999999/read")
+        assert missing.status_code == 404
 
     async def test_mark_read_requires_case_ownership(
         self, user_client, admin_client, make_client, sent_emails
