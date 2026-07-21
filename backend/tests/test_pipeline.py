@@ -10,7 +10,9 @@ from app.models import CaseEstimate, EstimateStatus
 from app.services.estimate_pipeline.orchestrator import STALL_AFTER
 from app.services.openrouter import OpenRouterError
 from tests.fixtures_estimates import (
+    ADVERSARIAL_REPLY,
     EXTRACTION_NO_FAULT_SOFT,
+    EXTRACTION_REAR_END_CA,
     EXTRACTION_SOL_EXPIRED,
     EXTRACTION_SPARSE,
     EXTRACTION_TRESPASSER,
@@ -181,6 +183,53 @@ class TestSamplingMajority:
         tight_width = admin_tight["result"]["width"]
         varied_width = admin_varied["result"]["width"]
         assert varied_width > tight_width
+
+
+class TestSchemaRepair:
+    """Providers can accept response_format yet let the model rename fields
+    (seen with Kimi K3 on the adversarial stage) — one corrective retry."""
+
+    DRIFTED_ADVERSARIAL = {
+        "lowest_defensible_offer_pct": 40,
+        "low_rationale": "Offer specials only and start a settlement now.",
+        "attack_arguments": [],
+    }
+
+    async def test_adversarial_drift_is_repaired_by_retry(
+        self, admin_client, session_factory, install
+    ):
+        d = install(PipelineDispatcher())
+        d.hooks["adjuster_review"] = lambda nth: (
+            self.DRIFTED_ADVERSARIAL if nth == 0 else ADVERSARIAL_REPLY
+        )
+        public, admin = await _run(admin_client, session_factory, d)
+        assert public["status"] == "completed"
+        assert admin["stage_status"]["adversarial"]["status"] == "completed"
+        adversarial_calls = [c for c in d.calls if c["schema_name"] == "adjuster_review"]
+        assert len(adversarial_calls) == 2
+        # The retry conversation carries the bad reply and the corrective ask.
+        assert "schema" in adversarial_calls[1]["messages"][-1]["content"]
+
+    async def test_adversarial_drifting_twice_degrades_without_failing_run(
+        self, admin_client, session_factory, install
+    ):
+        d = install(PipelineDispatcher())
+        d.hooks["adjuster_review"] = lambda nth: self.DRIFTED_ADVERSARIAL
+        public, admin = await _run(admin_client, session_factory, d)
+        assert public["status"] == "completed"
+        assert admin["stage_status"]["adversarial"]["status"] == "failed"
+
+    async def test_extraction_drift_is_repaired_by_retry(
+        self, admin_client, session_factory, install
+    ):
+        d = install(PipelineDispatcher())
+        d.hooks["case_extraction"] = lambda nth: (
+            {"meta": "not an object"} if nth == 0 else EXTRACTION_REAR_END_CA
+        )
+        public, admin = await _run(admin_client, session_factory, d)
+        assert public["status"] == "completed"
+        assert admin["stage_status"]["extraction"]["status"] == "completed"
+        assert sum(1 for c in d.calls if c["schema_name"] == "case_extraction") == 2
 
 
 class TestStallHealing:

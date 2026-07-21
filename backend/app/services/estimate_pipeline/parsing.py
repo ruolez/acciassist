@@ -3,6 +3,8 @@
 import json
 import re
 
+from pydantic import ValidationError
+
 _JSON_BLOCK = re.compile(r"\{.*\}", re.DOTALL)
 _THINK_BLOCK = re.compile(r"<think(?:ing)?>.*?</think(?:ing)?>", re.DOTALL | re.IGNORECASE)
 
@@ -22,3 +24,27 @@ def extract_json_object(content: str) -> dict:
         if match is None:
             raise ValueError("no JSON object found in model response") from None
         return json.loads(match.group(0))
+
+
+_REPAIR_INSTRUCTION = (
+    "Your previous reply did not match the required JSON schema ({error}). "
+    "Reply again with ONLY a JSON object that matches the schema exactly, "
+    "using exactly the schema's field names."
+)
+
+
+async def call_with_schema_repair(call, messages: list[dict], parse):
+    """Run ``call(messages)`` and ``parse`` the reply; on a schema mismatch,
+    retry once with the validation error fed back. Some providers accept
+    ``response_format`` yet let the model drift from it — reasoning models
+    in particular have been seen renaming required fields."""
+    content = await call(messages)
+    try:
+        return parse(content)
+    except (ValueError, ValidationError) as exc:
+        retry = [
+            *messages,
+            {"role": "assistant", "content": content},
+            {"role": "user", "content": _REPAIR_INSTRUCTION.format(error=str(exc)[:500])},
+        ]
+        return parse(await call(retry))

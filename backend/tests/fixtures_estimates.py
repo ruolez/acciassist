@@ -109,6 +109,8 @@ class PipelineDispatcher:
         # schema_name -> exception to raise (or a callable(call_index)->reply|raise)
         self.errors: dict[str, Exception] = {}
         self.judgment_hook = None  # optional callable(nth_judgment_call) -> dict | Exception
+        # schema_name -> callable(nth_call_for_that_schema) -> dict | Exception
+        self.hooks: dict = {}
         self.calls: list[dict] = []
 
     async def __call__(self, api_key, model, messages, json_schema=None,
@@ -123,6 +125,12 @@ class PipelineDispatcher:
         self.calls.append(record)
         if schema_name in self.errors:
             raise self.errors[schema_name]
+        if schema_name in self.hooks:
+            nth = sum(1 for c in self.calls if c["schema_name"] == schema_name) - 1
+            outcome = self.hooks[schema_name](nth)
+            if isinstance(outcome, Exception):
+                raise outcome
+            return json.dumps(outcome)
         if schema_name == "case_judgment" and self.judgment_hook is not None:
             nth = sum(1 for c in self.calls if c["schema_name"] == "case_judgment") - 1
             outcome = self.judgment_hook(nth)

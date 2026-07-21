@@ -13,7 +13,7 @@ from pydantic import BaseModel, ConfigDict, field_validator
 from app.services import openrouter
 from app.services.estimate_pipeline.assembly import AdversarialSummary
 from app.services.estimate_pipeline.canonical import CanonicalExtraction
-from app.services.estimate_pipeline.parsing import extract_json_object
+from app.services.estimate_pipeline.parsing import call_with_schema_repair, extract_json_object
 
 ADVERSARIAL_SCHEMA_NAME = "adjuster_review"
 ADVERSARIAL_TEMPERATURE = 0.3
@@ -139,15 +139,19 @@ async def run_adversarial(
     rule,
     referer: str | None = None,
 ) -> AdversarialSummary:
-    content = await openrouter.chat_completion(
-        api_key,
-        model,
-        build_adversarial_messages(x, describe_rule(rule)),
-        json_schema=ADVERSARIAL_JSON_SCHEMA,
-        schema_name=ADVERSARIAL_SCHEMA_NAME,
-        referer=referer,
-        temperature=ADVERSARIAL_TEMPERATURE,
-        timeout=ADVERSARIAL_HTTP_TIMEOUT,
-        exclude_reasoning=True,
+    async def _call(messages: list[dict]) -> str:
+        return await openrouter.chat_completion(
+            api_key,
+            model,
+            messages,
+            json_schema=ADVERSARIAL_JSON_SCHEMA,
+            schema_name=ADVERSARIAL_SCHEMA_NAME,
+            referer=referer,
+            temperature=ADVERSARIAL_TEMPERATURE,
+            timeout=ADVERSARIAL_HTTP_TIMEOUT,
+            exclude_reasoning=True,
+        )
+
+    return await call_with_schema_repair(
+        _call, build_adversarial_messages(x, describe_rule(rule)), parse_adversarial
     )
-    return parse_adversarial(content)

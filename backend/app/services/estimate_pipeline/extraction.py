@@ -14,7 +14,7 @@ from app.services.estimate_pipeline.canonical import (
     EXTRACTION_SCHEMA_NAME,
     CanonicalExtraction,
 )
-from app.services.estimate_pipeline.parsing import extract_json_object
+from app.services.estimate_pipeline.parsing import call_with_schema_repair, extract_json_object
 
 # Sized for always-on reasoning models (Kimi K3 etc.), which can take minutes.
 EXTRACTION_TIMEOUT = 180.0
@@ -71,18 +71,22 @@ async def run_extraction(
 ) -> CanonicalExtraction:
     """One temperature-0 structured call. Raises OpenRouterError, ValueError,
     or ValidationError — the orchestrator fails the run on any of them."""
-    content = await openrouter.chat_completion(
-        api_key,
-        model,
-        build_extraction_messages(injury_type_name, qa_pairs),
-        json_schema=EXTRACTION_JSON_SCHEMA,
-        schema_name=EXTRACTION_SCHEMA_NAME,
-        referer=referer,
-        temperature=0.0,
-        timeout=EXTRACTION_TIMEOUT,
-        exclude_reasoning=True,
+    async def _call(messages: list[dict]) -> str:
+        return await openrouter.chat_completion(
+            api_key,
+            model,
+            messages,
+            json_schema=EXTRACTION_JSON_SCHEMA,
+            schema_name=EXTRACTION_SCHEMA_NAME,
+            referer=referer,
+            temperature=0.0,
+            timeout=EXTRACTION_TIMEOUT,
+            exclude_reasoning=True,
+        )
+
+    return await call_with_schema_repair(
+        _call, build_extraction_messages(injury_type_name, qa_pairs), parse_extraction
     )
-    return parse_extraction(content)
 
 
 __all__ = [

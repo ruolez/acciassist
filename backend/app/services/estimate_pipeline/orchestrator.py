@@ -47,9 +47,9 @@ logger = logging.getLogger(__name__)
 
 # Reasoning models (e.g. Kimi K3, which always reasons at max effort) can take
 # minutes per completion, so the caps are sized for them rather than for fast
-# chat models.
-PIPELINE_TIMEOUT = 600.0
-ADVERSARIAL_TIMEOUT = 200.0
+# chat models — including room for one schema-repair retry per stage.
+PIPELINE_TIMEOUT = 900.0
+ADVERSARIAL_TIMEOUT = 400.0
 # A pending row whose heartbeat (updated_at, refreshed on every stage commit)
 # is older than this can't still be running — the process died mid-run.
 STALL_AFTER = PIPELINE_TIMEOUT + 120.0
