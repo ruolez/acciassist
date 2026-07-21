@@ -5,8 +5,10 @@ import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
 
+import { Logo } from "../../components/Logo";
 import { api, ApiError } from "../../api/client";
 import type { Admin } from "../../api/types";
+import { usePageTitle } from "./usePageTitle";
 import "./admin.css";
 
 const schema = z.object({
@@ -16,6 +18,7 @@ const schema = z.object({
 type LoginForm = z.infer<typeof schema>;
 
 export function AdminLogin() {
+  usePageTitle("Sign in");
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [formError, setFormError] = useState<string | null>(null);
@@ -39,8 +42,9 @@ export function AdminLogin() {
   return (
     <div className="login-page">
       <form className="card login-card" onSubmit={handleSubmit(onSubmit)}>
-        <div className="admin-brand">AcciAssist</div>
+        <Logo size={44} withWordmark />
         <h1>Admin sign in</h1>
+        <p className="login-sub">The patient intake and case management panel.</p>
         {formError && <div className="error-text">{formError}</div>}
         <div className="field">
           <label>Email</label>

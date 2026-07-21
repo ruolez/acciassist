@@ -6,11 +6,13 @@ import { api } from "../../api/client";
 import type { InjuryType } from "../../api/types";
 import { SortableList } from "./SortableList";
 import { useActionError } from "./useActionError";
+import { usePageTitle } from "./usePageTitle";
 import "./admin.css";
 
 const KEY = ["admin", "injury-types"];
 
 export function InjuryTypesPage() {
+  usePageTitle("Injury Types");
   const queryClient = useQueryClient();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");

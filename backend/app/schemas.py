@@ -260,6 +260,11 @@ class IntakeSessionOut(ORMModel):
     status: IntakeStatus
     started_at: datetime
     completed_at: datetime | None
+    injury_type_name: str | None = None
+    lead_name: str | None = None
+    payout_min: int | None = None
+    payout_max: int | None = None
+    estimate_status: EstimateStatus | None = None
 
 
 class CaseEstimateAdminOut(ORMModel):

@@ -3,11 +3,13 @@ import { useState } from "react";
 
 import { api, ApiError } from "../../api/client";
 import type { Admin } from "../../api/types";
+import { usePageTitle } from "./usePageTitle";
 import "./admin.css";
 
 const KEY = ["admin", "admins"];
 
 export function AdminsPage() {
+  usePageTitle("Admins");
   const queryClient = useQueryClient();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

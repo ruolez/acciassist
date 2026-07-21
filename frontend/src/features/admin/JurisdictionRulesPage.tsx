@@ -3,6 +3,7 @@ import { useState } from "react";
 
 import { api, ApiError } from "../../api/client";
 import type { ComparativeRule, JurisdictionRule } from "../../api/types";
+import { usePageTitle } from "./usePageTitle";
 import "./admin.css";
 
 const KEY = ["admin", "jurisdictions"];
@@ -168,6 +169,7 @@ function RuleEditor({ rule, onClose }: { rule: JurisdictionRule; onClose: () => 
 }
 
 export function JurisdictionRulesPage() {
+  usePageTitle("Jurisdictions");
   const [openCode, setOpenCode] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [unreviewedOnly, setUnreviewedOnly] = useState(false);
@@ -220,6 +222,9 @@ export function JurisdictionRulesPage() {
           />
           Needs review only
         </label>
+        {unreviewed > 0 && (
+          <span className="chip chip-warn">{unreviewed} need review</span>
+        )}
         <span className="muted toolbar-count">
           {visible.length} of {data?.length ?? 0}
         </span>
@@ -239,9 +244,7 @@ export function JurisdictionRulesPage() {
               {rule.noneconomic_cap !== null && (
                 <span className="muted">cap ${rule.noneconomic_cap.toLocaleString()}</span>
               )}
-              <span className={`badge ${rule.needs_review ? "badge-off" : "badge-on"}`}>
-                {rule.needs_review ? "needs review" : "verified"}
-              </span>
+              {!rule.needs_review && <span className="badge badge-on">verified</span>}
               <button
                 className="btn btn-ghost"
                 onClick={() =>

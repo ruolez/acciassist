@@ -23,8 +23,13 @@
   --surface: #ffffff;
   --surface-tint: #f7f8fb;
   --error: #d6492f;
+  --error-soft: #fdecea;
+  --error-ink: #a5281a;
   --success: #1e8e3e;
+  --success-soft: #e7f4ea;
   --warning: var(--gold-deep);
+  --warn-soft: #fef7e0;
+  --warn-ink: #7c5a00;
   --on-surface: #131722;
   --text-secondary: #5a6478;
   --outline: #e4e7f0;

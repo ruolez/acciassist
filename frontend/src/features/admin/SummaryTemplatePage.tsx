@@ -3,9 +3,10 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { api } from "../../api/client";
-import type { Question, SummaryTemplate } from "../../api/types";
+import type { InjuryType, Question, SummaryTemplate } from "../../api/types";
 import { findUnknownTokens } from "./template-tokens";
 import { useActionError } from "./useActionError";
+import { usePageTitle } from "./usePageTitle";
 import "./admin.css";
 
 export function SummaryTemplatePage() {
@@ -23,6 +24,12 @@ export function SummaryTemplatePage() {
     queryKey: ["admin", "questions", injuryTypeId],
     queryFn: () => api<Question[]>(`/admin/injury-types/${injuryTypeId}/questions`),
   });
+  const { data: injuryTypes } = useQuery({
+    queryKey: ["admin", "injury-types"],
+    queryFn: () => api<InjuryType[]>("/admin/injury-types"),
+  });
+  const typeName = injuryTypes?.find((t) => t.id === injuryTypeId)?.name;
+  usePageTitle(typeName ? `${typeName} summary template` : "Summary Template");
 
   const [body, setBody] = useState("");
   const [min, setMin] = useState<string>("");
@@ -88,7 +95,7 @@ export function SummaryTemplatePage() {
           <Link className="back-link" to="/admin/injury-types">
             ← Injury Types
           </Link>
-          <h1>Summary Template</h1>
+          <h1>{typeName ? `${typeName} · Summary Template` : "Summary Template"}</h1>
         </div>
         <button className="btn btn-primary" onClick={() => save.mutate()} disabled={save.isPending}>
           {saved ? "Saved ✓" : "Save"}

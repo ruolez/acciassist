@@ -97,6 +97,11 @@ export type IntakeSessionSummary = {
   status: "in_progress" | "completed";
   started_at: string;
   completed_at: string | null;
+  injury_type_name: string | null;
+  lead_name: string | null;
+  payout_min: number | null;
+  payout_max: number | null;
+  estimate_status: "pending" | "completed" | "failed" | null;
 };
 
 export type IntakeSessionDetail = IntakeSessionSummary & {

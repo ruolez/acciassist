@@ -3,13 +3,14 @@ import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { api } from "../../api/client";
-import type { Question } from "../../api/types";
+import type { InjuryType, Question } from "../../api/types";
 import { AdviceCard } from "./AdviceCard";
 import { groupIntoPages } from "./page-layout";
 import { PageLayoutList } from "./PageLayoutList";
 import { QuestionEditor, type QuestionDraft } from "./QuestionEditor";
 import { TYPE_SHORT } from "./question-labels";
 import { useActionError } from "./useActionError";
+import { usePageTitle } from "./usePageTitle";
 import "./admin.css";
 
 export function QuestionnaireBuilder() {
@@ -31,6 +32,12 @@ export function QuestionnaireBuilder() {
     queryKey: key,
     queryFn: () => api<Question[]>(`/admin/injury-types/${injuryTypeId}/questions`),
   });
+  const { data: injuryTypes } = useQuery({
+    queryKey: ["admin", "injury-types"],
+    queryFn: () => api<InjuryType[]>("/admin/injury-types"),
+  });
+  const typeName = injuryTypes?.find((t) => t.id === injuryTypeId)?.name;
+  usePageTitle(typeName ? `${typeName} questionnaire` : "Questionnaire");
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: key });
 
@@ -123,7 +130,7 @@ export function QuestionnaireBuilder() {
           <Link className="back-link" to="/admin/injury-types">
             ← Injury Types
           </Link>
-          <h1>Questionnaire</h1>
+          <h1>{typeName ? `${typeName} · Questionnaire` : "Questionnaire"}</h1>
         </div>
       </div>
       {error && <p className="error-text">{error}</p>}

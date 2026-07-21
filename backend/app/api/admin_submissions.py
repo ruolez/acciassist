@@ -6,7 +6,7 @@ from sqlalchemy.orm import selectinload
 
 from app.deps import DbSession
 from app.errors import AppError
-from app.models import CaseEstimate, IntakeSession, Lead
+from app.models import CaseEstimate, InjuryType, IntakeSession, Lead
 from app.schemas import (
     AnswerOut,
     CaseEstimateAdminOut,
@@ -19,11 +19,43 @@ router = APIRouter()
 
 
 @router.get("/intake-sessions", response_model=list[IntakeSessionOut])
-async def list_sessions(db: DbSession) -> list[IntakeSession]:
-    rows = await db.scalars(
-        select(IntakeSession).order_by(IntakeSession.started_at.desc())
+async def list_sessions(db: DbSession) -> list[IntakeSessionOut]:
+    sessions = list(
+        await db.scalars(select(IntakeSession).order_by(IntakeSession.started_at.desc()))
     )
-    return list(rows)
+    type_names = dict((await db.execute(select(InjuryType.id, InjuryType.name))).all())
+    session_ids = [s.id for s in sessions]
+    estimates: dict[uuid.UUID, CaseEstimate] = {}
+    leads: dict[uuid.UUID, Lead] = {}
+    if session_ids:
+        for est in await db.scalars(
+            select(CaseEstimate).where(CaseEstimate.intake_session_id.in_(session_ids))
+        ):
+            estimates[est.intake_session_id] = est
+        for lead in await db.scalars(
+            select(Lead).where(Lead.intake_session_id.in_(session_ids))
+        ):
+            if lead.intake_session_id is not None:
+                leads[lead.intake_session_id] = lead
+    out: list[IntakeSessionOut] = []
+    for s in sessions:
+        est = estimates.get(s.id)
+        lead = leads.get(s.id)
+        out.append(
+            IntakeSessionOut(
+                id=s.id,
+                injury_type_id=s.injury_type_id,
+                status=s.status,
+                started_at=s.started_at,
+                completed_at=s.completed_at,
+                injury_type_name=type_names.get(s.injury_type_id),
+                lead_name=lead.name if lead else None,
+                payout_min=est.payout_min if est else None,
+                payout_max=est.payout_max if est else None,
+                estimate_status=est.status if est else None,
+            )
+        )
+    return out
 
 
 @router.get("/intake-sessions/{session_id}", response_model=IntakeSessionDetailOut)

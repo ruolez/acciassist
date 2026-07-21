@@ -12,8 +12,10 @@ import type {
 } from "../../api/types";
 import { CASE_STAGES, STAGE_LABELS } from "../account/stages";
 import { AdviceCard } from "./AdviceCard";
+import { relativeTime } from "./format";
 import { PipelineEstimateCard } from "./PipelineEstimateCard";
 import { useActionError } from "./useActionError";
+import { usePageTitle } from "./usePageTitle";
 import "./admin.css";
 
 function EstimateGapCard({
@@ -87,6 +89,7 @@ export function CaseDetailAdminPage() {
     queryFn: () => api<AdminCaseDetail>(`/admin/cases/${caseId}`),
     enabled: !!caseId,
   });
+  usePageTitle(data ? `Case #${data.id} · ${data.lead_name}` : "Case");
 
   const refresh = (detail: AdminCaseDetail) => {
     clear();
@@ -234,17 +237,25 @@ export function CaseDetailAdminPage() {
         </button>
       </div>
 
-      <div className="table-list">
-        {updates.length === 0 && <p className="muted">No updates yet.</p>}
-        {updates.map((u) => (
-          <div key={u.id} className={`card update-row ${u.kind}`}>
-            <p className="update-row-body">{u.body}</p>
-            <span className="muted">
-              {u.admin_email ?? "system"} · {new Date(u.created_at).toLocaleString()}
-            </span>
-          </div>
-        ))}
-      </div>
+      <h2 className="section-label">Activity</h2>
+      {updates.length === 0 && (
+        <p className="muted">No updates yet — post the first one above.</p>
+      )}
+      {updates.length > 0 && (
+        <div className="timeline">
+          {updates.map((u) => (
+            <div key={u.id} className={`timeline-item ${u.kind}`}>
+              <span className="timeline-dot" aria-hidden="true" />
+              <div className="card timeline-body">
+                <p className="update-row-body">{u.body}</p>
+                <span className="muted timeline-meta" title={new Date(u.created_at).toLocaleString()}>
+                  {u.admin_email ?? "system"} · {relativeTime(u.created_at)}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

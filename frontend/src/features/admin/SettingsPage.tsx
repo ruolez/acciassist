@@ -3,7 +3,9 @@ import { useEffect, useMemo, useState } from "react";
 
 import { api, ApiError } from "../../api/client";
 import type { AppSettings, EmailLogEntry, OpenRouterModel } from "../../api/types";
+import { humanize } from "./format";
 import { useActionError } from "./useActionError";
+import { usePageTitle } from "./usePageTitle";
 import "./admin.css";
 
 const KEY = ["admin", "settings"];
@@ -127,6 +129,7 @@ function ModelSelect({
 }
 
 export function SettingsPage() {
+  usePageTitle("Settings");
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<Tab>("email");
   const [form, setForm] = useState<FormState | null>(null);
@@ -372,7 +375,7 @@ export function SettingsPage() {
                 <div key={entry.id} className="email-log-row">
                   <span className={`badge email-${entry.status}`}>{entry.status}</span>
                   <span className="lead-name">{entry.to_email}</span>
-                  <span className="muted">{entry.purpose}</span>
+                  <span className="muted">{humanize(entry.purpose)}</span>
                   <span className="muted">{new Date(entry.created_at).toLocaleString()}</span>
                   {entry.error && (
                     <span className="error-text email-log-error">{entry.error}</span>

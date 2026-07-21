@@ -5,9 +5,12 @@ import { Link } from "react-router-dom";
 import { api } from "../../api/client";
 import type { AdminCaseListItem, CaseStage } from "../../api/types";
 import { CASE_STAGES, STAGE_LABELS } from "../account/stages";
+import { EmptyState } from "./EmptyState";
+import { usePageTitle } from "./usePageTitle";
 import "./admin.css";
 
 export function CasesPage() {
+  usePageTitle("Cases");
   const [stageFilter, setStageFilter] = useState<CaseStage | null>(null);
   const { data, isLoading } = useQuery({
     queryKey: ["admin", "cases", stageFilter],
@@ -43,7 +46,12 @@ export function CasesPage() {
       </div>
 
       {isLoading && <p className="muted">Loading…</p>}
-      {data && data.length === 0 && <p className="muted">No cases here yet.</p>}
+      {data && data.length === 0 && (
+        <EmptyState
+          title={stageFilter ? `No ${STAGE_LABELS[stageFilter].toLowerCase()} cases` : "No cases yet"}
+          hint="A case is created automatically whenever a patient leaves their contact details after an assessment."
+        />
+      )}
       <div className="table-list">
         {data?.map((c) => (
           <Link key={c.id} to={`/admin/cases/${c.id}`} className="card lead-row case-row">

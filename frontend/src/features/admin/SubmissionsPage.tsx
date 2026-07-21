@@ -3,6 +3,9 @@ import { useState } from "react";
 
 import { api } from "../../api/client";
 import type { IntakeSessionDetail, IntakeSessionSummary } from "../../api/types";
+import { EmptyState } from "./EmptyState";
+import { humanize, relativeTime } from "./format";
+import { usePageTitle } from "./usePageTitle";
 import "./admin.css";
 
 function SubmissionDetail({ sessionId }: { sessionId: string }) {
@@ -44,36 +47,78 @@ function SubmissionDetail({ sessionId }: { sessionId: string }) {
   );
 }
 
+function EstimateCell({ s }: { s: IntakeSessionSummary }) {
+  if (s.payout_min !== null && s.payout_max !== null) {
+    return (
+      <span className="sub-estimate">
+        ${s.payout_min.toLocaleString()} – ${s.payout_max.toLocaleString()}
+      </span>
+    );
+  }
+  if (s.estimate_status === "pending") return <span className="sub-estimate none">Calculating…</span>;
+  if (s.estimate_status === "failed")
+    return <span className="sub-estimate none error-text">Estimate failed</span>;
+  return <span className="sub-estimate none">No estimate</span>;
+}
+
+type StatusFilter = "all" | "completed" | "in_progress";
+
 export function SubmissionsPage() {
+  usePageTitle("Submissions");
   const [open, setOpen] = useState<string | null>(null);
+  const [filter, setFilter] = useState<StatusFilter>("all");
   const { data, isLoading } = useQuery({
     queryKey: ["admin", "sessions"],
     queryFn: () => api<IntakeSessionSummary[]>("/admin/intake-sessions"),
   });
+
+  const visible = (data ?? []).filter((s) => filter === "all" || s.status === filter);
 
   return (
     <div className="page">
       <div className="page-head">
         <div>
           <h1>Submissions</h1>
-          <p className="page-sub">Completed questionnaires with their AI estimates, newest first.</p>
+          <p className="page-sub">Every intake questionnaire, its lead, and its AI estimate — newest first.</p>
         </div>
       </div>
+
+      <div className="filter-chips">
+        {(["all", "completed", "in_progress"] as const).map((f) => (
+          <button
+            key={f}
+            className={`chip ${filter === f ? "chip-active" : ""}`}
+            onClick={() => setFilter(f)}
+          >
+            {f === "all" ? "All" : humanize(f)}
+          </button>
+        ))}
+      </div>
+
       {isLoading && <p className="muted">Loading…</p>}
-      {data && data.length === 0 && <p className="muted">No submissions yet.</p>}
+      {data && visible.length === 0 && (
+        <EmptyState
+          title={filter === "all" ? "No submissions yet" : `No ${humanize(filter).toLowerCase()} submissions`}
+          hint="Completed patient questionnaires appear here with their estimates as soon as they come in."
+        />
+      )}
       <div className="table-list">
-        {data?.map((s) => (
+        {visible.map((s) => (
           <div key={s.id} className="card table-row-card">
-            <button
-              className="table-row"
-              onClick={() => setOpen(open === s.id ? null : s.id)}
-            >
-              <span className={`badge ${s.status === "completed" ? "badge-on" : "badge-off"}`}>
-                {s.status}
+            <button className="sub-row" onClick={() => setOpen(open === s.id ? null : s.id)}>
+              <span className="status-cell">
+                <span className={`status-dot ${s.status}`} />
+                {humanize(s.status)}
               </span>
-              <span className="muted mono">{s.id.slice(0, 8)}</span>
-              <span className="muted">{new Date(s.started_at).toLocaleString()}</span>
-              <span>{open === s.id ? "▾" : "▸"}</span>
+              <span className="sub-main">
+                <span className="sub-type">{s.injury_type_name ?? "Unknown type"}</span>
+                <span className="sub-lead">{s.lead_name ?? "Anonymous"}</span>
+              </span>
+              <EstimateCell s={s} />
+              <span className="sub-date" title={new Date(s.started_at).toLocaleString()}>
+                {relativeTime(s.started_at)}
+              </span>
+              <span className="sub-chevron">{open === s.id ? "▾" : "▸"}</span>
             </button>
             {open === s.id && <SubmissionDetail sessionId={s.id} />}
           </div>
