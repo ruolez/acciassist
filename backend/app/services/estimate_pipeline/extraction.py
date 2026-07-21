@@ -57,9 +57,34 @@ def build_extraction_messages(
     ]
 
 
+_EXPECTED_KEYS = set(CanonicalExtraction.model_fields)
+_EMPTY_DUMP = CanonicalExtraction().model_dump()
+
+
 def parse_extraction(content: str) -> CanonicalExtraction:
-    """Raises ValueError/ValidationError on an unusable reply."""
-    return CanonicalExtraction.model_validate(extract_json_object(content))
+    """Raises ValueError/ValidationError on an unusable reply.
+
+    The canonical schema tolerates missing fields by design (unasked facts
+    become nulls), so a drifted reply shape would otherwise validate as an
+    all-defaults extraction and publish a confident-looking $0 estimate.
+    Guard against that: unwrap a single-key envelope, reject shapes with no
+    known section, and reject an extraction carrying no facts at all — each
+    raise gives the schema-repair retry a chance to recover."""
+    data = extract_json_object(content)
+    if not (_EXPECTED_KEYS & set(data)):
+        wrapped = [
+            v for v in data.values() if isinstance(v, dict) and (_EXPECTED_KEYS & set(v))
+        ]
+        if len(wrapped) == 1:
+            data = wrapped[0]
+        else:
+            raise ValueError(
+                f"reply has none of the expected extraction sections (got: {sorted(data)[:8]})"
+            )
+    extraction = CanonicalExtraction.model_validate(data)
+    if extraction.model_dump() == _EMPTY_DUMP:
+        raise ValueError("extraction contained no facts at all (every field null)")
+    return extraction
 
 
 async def run_extraction(

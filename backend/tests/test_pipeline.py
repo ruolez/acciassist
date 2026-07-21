@@ -231,6 +231,37 @@ class TestSchemaRepair:
         assert admin["stage_status"]["extraction"]["status"] == "completed"
         assert sum(1 for c in d.calls if c["schema_name"] == "case_extraction") == 2
 
+    async def test_enveloped_extraction_is_unwrapped_without_retry(
+        self, admin_client, session_factory, install
+    ):
+        d = install(PipelineDispatcher())
+        d.hooks["case_extraction"] = lambda nth: {"case_extraction": EXTRACTION_REAR_END_CA}
+        public, _ = await _run(admin_client, session_factory, d)
+        assert public["status"] == "completed"
+        assert public["payout_max"] > 0
+        assert sum(1 for c in d.calls if c["schema_name"] == "case_extraction") == 1
+
+    async def test_factless_extraction_is_repaired_by_retry(
+        self, admin_client, session_factory, install
+    ):
+        d = install(PipelineDispatcher())
+        d.hooks["case_extraction"] = lambda nth: (
+            {"meta": {}} if nth == 0 else EXTRACTION_REAR_END_CA
+        )
+        public, _ = await _run(admin_client, session_factory, d)
+        assert public["status"] == "completed"
+        assert public["payout_max"] > 0
+        assert sum(1 for c in d.calls if c["schema_name"] == "case_extraction") == 2
+
+    async def test_factless_extraction_twice_fails_instead_of_zero_estimate(
+        self, admin_client, session_factory, install
+    ):
+        d = install(PipelineDispatcher())
+        d.hooks["case_extraction"] = lambda nth: {"meta": {}}
+        _, admin = await _run(admin_client, session_factory, d)
+        assert admin["status"] == "failed"
+        assert "no facts" in admin["error"]
+
 
 class TestStallHealing:
     async def _pending_with_age(self, admin_client, session_factory, install, age_seconds):
