@@ -62,7 +62,7 @@ function ResendLinkForm() {
 }
 
 export function ClaimAccountPage() {
-  usePageTitle("Create your account");
+  usePageTitle("Create your account", "AcciAssist");
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token") ?? "";
   const navigate = useNavigate();

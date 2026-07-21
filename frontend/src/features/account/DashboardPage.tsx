@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link, useOutletContext } from "react-router-dom";
+import { Link, Navigate, useOutletContext } from "react-router-dom";
 
 import { api } from "../../api/client";
 import type { CaseListItem, User } from "../../api/types";
@@ -27,7 +27,7 @@ function StageMeter({ stage }: { stage: CaseListItem["stage"] }) {
 }
 
 export function DashboardPage() {
-  usePageTitle("Your cases");
+  usePageTitle("Your cases", "AcciAssist");
   const user = useOutletContext<User>();
   const { data, isLoading, isError } = useQuery({
     queryKey: ["user", "cases"],
@@ -37,6 +37,10 @@ export function DashboardPage() {
   if (isLoading) return <div className="portal-empty">Loading your cases…</div>;
   if (isError || !data)
     return <div className="portal-empty error-text">We couldn&apos;t load your cases.</div>;
+
+  // One case (the common path): skip the list and land in it directly. The
+  // sidebar's "All cases" link still reaches this page for the empty state.
+  if (data.length === 1) return <Navigate to={`/account/cases/${data[0].id}`} replace />;
 
   return (
     <>

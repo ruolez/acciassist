@@ -13,7 +13,7 @@ const schema = z.object({ email: z.string().email("Enter a valid email") });
 type ForgotForm = z.infer<typeof schema>;
 
 export function ForgotPasswordPage() {
-  usePageTitle("Reset password");
+  usePageTitle("Reset password", "AcciAssist");
   const [sent, setSent] = useState(false);
   const {
     register,

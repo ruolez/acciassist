@@ -21,7 +21,7 @@ const schema = z
 type ResetForm = z.infer<typeof schema>;
 
 export function ResetPasswordPage() {
-  usePageTitle("Choose a new password");
+  usePageTitle("Choose a new password", "AcciAssist");
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token") ?? "";
   const navigate = useNavigate();

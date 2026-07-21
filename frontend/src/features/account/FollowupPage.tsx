@@ -14,7 +14,7 @@ import "./account.css";
  * Answers live server-side (loaded with the questionnaire), so patients can
  * leave and resume from any device. */
 export function FollowupPage() {
-  usePageTitle("Follow-up questions");
+  usePageTitle("Follow-up questions", "AcciAssist");
   const { caseId } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();

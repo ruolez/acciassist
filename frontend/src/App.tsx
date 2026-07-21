@@ -1,7 +1,11 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 
 import { AccountLayout } from "./features/account/AccountLayout";
-import { CaseDetailPage } from "./features/account/CaseDetailPage";
+import { CaseDocumentsPage } from "./features/account/CaseDocumentsPage";
+import { CaseInfoPage } from "./features/account/CaseInfoPage";
+import { CaseLayout } from "./features/account/CaseLayout";
+import { CaseOverviewPage } from "./features/account/CaseOverviewPage";
+import { CaseUpdatesPage } from "./features/account/CaseUpdatesPage";
 import { ClaimAccountPage } from "./features/account/ClaimAccountPage";
 import { DashboardPage } from "./features/account/DashboardPage";
 import { FollowupPage } from "./features/account/FollowupPage";
@@ -41,7 +45,12 @@ export function App() {
       <Route path="/account/claim" element={<ClaimAccountPage />} />
       <Route path="/account" element={<AccountLayout />}>
         <Route index element={<DashboardPage />} />
-        <Route path="cases/:caseId" element={<CaseDetailPage />} />
+        <Route path="cases/:caseId" element={<CaseLayout />}>
+          <Route index element={<CaseOverviewPage />} />
+          <Route path="documents" element={<CaseDocumentsPage />} />
+          <Route path="updates" element={<CaseUpdatesPage />} />
+          <Route path="details" element={<CaseInfoPage />} />
+        </Route>
         <Route path="cases/:caseId/follow-up" element={<FollowupPage />} />
       </Route>
 

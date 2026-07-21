@@ -18,7 +18,7 @@ const schema = z.object({
 type LoginForm = z.infer<typeof schema>;
 
 export function UserLogin() {
-  usePageTitle("Log in");
+  usePageTitle("Log in", "AcciAssist");
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [formError, setFormError] = useState<string | null>(null);
