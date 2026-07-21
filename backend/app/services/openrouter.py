@@ -167,6 +167,7 @@ async def chat_completion(
     timeout: float = _COMPLETION_TIMEOUT,
     require_parameters: bool = True,
     return_annotations: bool = False,
+    exclude_reasoning: bool = False,
 ) -> str | tuple[str, list]:
     """Run one non-streaming completion and return the assistant content.
 
@@ -180,6 +181,11 @@ async def chat_completion(
     """
     headers = _headers(api_key, referer)
     body: dict = {"model": model, "messages": messages}
+    if exclude_reasoning:
+        # Reasoning models still think internally, but the trace is dropped
+        # server-side instead of being shipped back (and risking leaking into
+        # content on providers that inline it).
+        body["reasoning"] = {"exclude": True}
     if temperature is not None:
         body["temperature"] = temperature
     if plugins is not None:
@@ -196,6 +202,13 @@ async def chat_completion(
             body["provider"] = {"require_parameters": True}
     async with httpx.AsyncClient(timeout=timeout) as client:
         resp = await _post_completion(client, headers, body)
+        if (
+            resp.status_code in (400, 404, 422)
+            and "reasoning" in body
+            and "reasoning" in resp.text.lower()
+        ):
+            body.pop("reasoning")
+            resp = await _post_completion(client, headers, body)
         if (
             resp.status_code != 200
             and json_schema is not None

@@ -19,6 +19,8 @@ from app.services.estimate_pipeline.parsing import extract_json_object
 
 JUDGMENT_SCHEMA_NAME = "case_judgment"
 JUDGMENT_TEMPERATURE = 0.7
+# Sized for always-on reasoning models (Kimi K3 etc.), which can take minutes.
+JUDGMENT_TIMEOUT = 180.0
 
 JUDGMENT_JSON_SCHEMA = {
     "type": "object",
@@ -110,6 +112,8 @@ async def sample_once(
         schema_name=JUDGMENT_SCHEMA_NAME,
         referer=referer,
         temperature=JUDGMENT_TEMPERATURE,
+        timeout=JUDGMENT_TIMEOUT,
+        exclude_reasoning=True,
     )
     return parse_judgment(content)
 

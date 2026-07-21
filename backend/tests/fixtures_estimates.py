@@ -114,7 +114,7 @@ class PipelineDispatcher:
     async def __call__(self, api_key, model, messages, json_schema=None,
                        schema_name="response", referer=None, temperature=None,
                        plugins=None, timeout=60.0, require_parameters=True,
-                       return_annotations=False):
+                       return_annotations=False, exclude_reasoning=False):
         record = {
             "model": model, "schema_name": schema_name, "temperature": temperature,
             "messages": messages, "json_schema": json_schema,

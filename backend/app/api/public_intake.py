@@ -31,6 +31,7 @@ from app.schemas import (
     SummaryOut,
 )
 from app.services import geo
+from app.services.estimate_pipeline.orchestrator import heal_stalled
 from app.services.estimates import schedule_estimate
 from app.services.leads import process_lead
 from app.services.notifications import notify_lead_received
@@ -308,6 +309,7 @@ async def get_estimate(session_id: uuid.UUID, db: DbSession) -> PublicEstimateOu
     )
     if estimate is None:
         return PublicEstimateOut(status="none")
+    await heal_stalled(db, estimate)
     if estimate.status == EstimateStatus.completed:
         return _public_estimate(estimate)
     return PublicEstimateOut(status=estimate.status.value)

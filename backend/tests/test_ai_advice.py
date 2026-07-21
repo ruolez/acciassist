@@ -64,7 +64,7 @@ async def test_advice_persists_and_regenerate_overwrites(
     )
 
     async def _fake(api_key, model, messages, json_schema=None, schema_name="response",
-                    referer=None):
+                    referer=None, **kwargs):
         calls.append({"messages": messages, "json_schema": json_schema})
         return next(replies)
 

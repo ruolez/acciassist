@@ -12,7 +12,7 @@ import asyncio
 import logging
 import time
 import uuid
-from datetime import date
+from datetime import UTC, date, datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -45,8 +45,14 @@ from app.services.summary import answer_display_value
 
 logger = logging.getLogger(__name__)
 
-PIPELINE_TIMEOUT = 240.0
-ADVERSARIAL_TIMEOUT = 60.0
+# Reasoning models (e.g. Kimi K3, which always reasons at max effort) can take
+# minutes per completion, so the caps are sized for them rather than for fast
+# chat models.
+PIPELINE_TIMEOUT = 600.0
+ADVERSARIAL_TIMEOUT = 200.0
+# A pending row whose heartbeat (updated_at, refreshed on every stage commit)
+# is older than this can't still be running — the process died mid-run.
+STALL_AFTER = PIPELINE_TIMEOUT + 120.0
 
 
 async def build_qa_triples(
@@ -122,24 +128,60 @@ async def _guarded(coro, timeout: float):
         return None, f"{type(exc).__name__}: {exc}"
 
 
+async def heal_stalled(db: AsyncSession, estimate: CaseEstimate | None) -> bool:
+    """Fail a pending row whose run can't still be alive. The pipeline is an
+    in-process background task, so a restart mid-run (deploy, crash) leaves the
+    row pending forever — read paths call this so the UI unsticks itself."""
+    if estimate is None or estimate.status != EstimateStatus.pending:
+        return False
+    if (datetime.now(UTC) - estimate.updated_at).total_seconds() <= STALL_AFTER:
+        return False
+    estimate.status = EstimateStatus.failed
+    estimate.error = (
+        "pipeline_stalled: the run was interrupted before finishing "
+        "(likely a server restart) — re-run the estimate"
+    )
+    await db.commit()
+    await db.refresh(estimate)
+    return True
+
+
 async def run_pipeline(session_id: uuid.UUID) -> None:
     """Background task entry point. Never raises."""
     factory = email_service.get_session_factory()
-    async with factory() as db:
-        estimate = await db.scalar(
-            select(CaseEstimate).where(CaseEstimate.intake_session_id == session_id)
-        )
-        if estimate is None:
-            logger.warning("run_pipeline: no estimate row for session %s", session_id)
-            return
-        try:
-            async with asyncio.timeout(PIPELINE_TIMEOUT):
-                await _run(db, estimate, session_id)
-        except TimeoutError:
-            await _fail(db, estimate, "pipeline_timeout: the estimate did not finish in time")
-        except Exception as exc:  # noqa: BLE001 — background task must not raise
-            logger.exception("estimate pipeline for session %s crashed", session_id)
-            await _fail(db, estimate, f"pipeline_error: {exc}")
+    error: str | None = None
+    try:
+        async with factory() as db:
+            estimate = await db.scalar(
+                select(CaseEstimate).where(CaseEstimate.intake_session_id == session_id)
+            )
+            if estimate is None:
+                logger.warning("run_pipeline: no estimate row for session %s", session_id)
+                return
+            try:
+                async with asyncio.timeout(PIPELINE_TIMEOUT):
+                    await _run(db, estimate, session_id)
+                return
+            except TimeoutError:
+                error = "pipeline_timeout: the estimate did not finish in time"
+            except Exception as exc:  # noqa: BLE001 — background task must not raise
+                logger.exception("estimate pipeline for session %s crashed", session_id)
+                error = f"pipeline_error: {exc}"
+    except Exception as exc:  # noqa: BLE001 — session teardown can fail after cancellation
+        logger.exception("estimate pipeline session for %s broke down", session_id)
+        error = error or f"pipeline_error: {exc}"
+    # Record the failure on a fresh session: the run's session may hold a
+    # poisoned connection (cancelled mid-operation), and a failed write here
+    # used to leave the row pending forever.
+    try:
+        async with factory() as db:
+            estimate = await db.scalar(
+                select(CaseEstimate).where(CaseEstimate.intake_session_id == session_id)
+            )
+            if estimate is not None and estimate.status == EstimateStatus.pending:
+                await _fail(db, estimate, error)
+    except Exception:  # noqa: BLE001
+        logger.exception("could not record estimate failure for session %s", session_id)
 
 
 async def _run(db: AsyncSession, estimate: CaseEstimate, session_id: uuid.UUID) -> None:

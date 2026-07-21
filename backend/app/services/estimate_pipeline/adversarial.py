@@ -17,6 +17,8 @@ from app.services.estimate_pipeline.parsing import extract_json_object
 
 ADVERSARIAL_SCHEMA_NAME = "adjuster_review"
 ADVERSARIAL_TEMPERATURE = 0.3
+# Sized for always-on reasoning models (Kimi K3 etc.), which can take minutes.
+ADVERSARIAL_HTTP_TIMEOUT = 180.0
 
 _ATTACK_CATEGORIES = [
     "causation",
@@ -145,5 +147,7 @@ async def run_adversarial(
         schema_name=ADVERSARIAL_SCHEMA_NAME,
         referer=referer,
         temperature=ADVERSARIAL_TEMPERATURE,
+        timeout=ADVERSARIAL_HTTP_TIMEOUT,
+        exclude_reasoning=True,
     )
     return parse_adversarial(content)

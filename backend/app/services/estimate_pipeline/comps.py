@@ -14,7 +14,8 @@ from app.services.estimate_pipeline.canonical import CanonicalExtraction
 from app.services.estimate_pipeline.parsing import extract_json_object
 
 COMPS_SCHEMA_NAME = "comparable_results"
-COMPS_TIMEOUT = 90.0
+# Sized for always-on reasoning models (Kimi K3 etc.) plus web-search latency.
+COMPS_TIMEOUT = 180.0
 
 COMPS_JSON_SCHEMA = {
     "type": "object",
@@ -168,5 +169,6 @@ async def run_comps(
         # schema is still requested but routing stays permissive.
         require_parameters=False,
         return_annotations=True,
+        exclude_reasoning=True,
     )
     return parse_comps(content, annotations)

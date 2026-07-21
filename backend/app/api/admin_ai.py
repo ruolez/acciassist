@@ -30,6 +30,7 @@ from app.services.estimates import (
     load_injury_type_questions,
     schedule_estimate,
 )
+from app.services.estimate_pipeline.orchestrator import heal_stalled
 from app.services.openrouter import OpenRouterError, ai_configured
 from app.services.questions import apply_question_update, create_questions, load_question
 
@@ -202,9 +203,11 @@ async def get_estimate(session_id: uuid.UUID, db: DbSession) -> CaseEstimate | N
     session = await db.get(IntakeSession, session_id)
     if session is None:
         raise AppError(404, "not_found", "Intake session not found")
-    return await db.scalar(
+    estimate = await db.scalar(
         select(CaseEstimate).where(CaseEstimate.intake_session_id == session_id)
     )
+    await heal_stalled(db, estimate)
+    return estimate
 
 
 def _estimate_gaps(estimate: CaseEstimate) -> list[str]:

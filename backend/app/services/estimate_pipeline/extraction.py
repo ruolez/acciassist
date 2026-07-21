@@ -16,6 +16,9 @@ from app.services.estimate_pipeline.canonical import (
 )
 from app.services.estimate_pipeline.parsing import extract_json_object
 
+# Sized for always-on reasoning models (Kimi K3 etc.), which can take minutes.
+EXTRACTION_TIMEOUT = 180.0
+
 EXTRACTION_SYSTEM_PROMPT = (
     "You are a data-extraction engine for a personal-injury intake platform. You are "
     "given one claimant's questionnaire answers as `- [slug] question: answer` lines. "
@@ -76,6 +79,8 @@ async def run_extraction(
         schema_name=EXTRACTION_SCHEMA_NAME,
         referer=referer,
         temperature=0.0,
+        timeout=EXTRACTION_TIMEOUT,
+        exclude_reasoning=True,
     )
     return parse_extraction(content)
 

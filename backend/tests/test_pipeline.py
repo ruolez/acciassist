@@ -1,7 +1,13 @@
 """Orchestrator scenarios: gates, degradation, sampling majority, comps."""
 
-import pytest
+import uuid
+from datetime import UTC, datetime, timedelta
 
+import pytest
+from sqlalchemy import update
+
+from app.models import CaseEstimate, EstimateStatus
+from app.services.estimate_pipeline.orchestrator import STALL_AFTER
 from app.services.openrouter import OpenRouterError
 from tests.fixtures_estimates import (
     EXTRACTION_NO_FAULT_SOFT,
@@ -175,3 +181,48 @@ class TestSamplingMajority:
         tight_width = admin_tight["result"]["width"]
         varied_width = admin_varied["result"]["width"]
         assert varied_width > tight_width
+
+
+class TestStallHealing:
+    async def _pending_with_age(self, admin_client, session_factory, install, age_seconds):
+        install(PipelineDispatcher())
+        await seed_ai_settings(session_factory)
+        await seed_jurisdictions(session_factory)
+        sid = await completed_session(admin_client)
+        async with session_factory() as db:
+            await db.execute(
+                update(CaseEstimate)
+                .where(CaseEstimate.intake_session_id == uuid.UUID(str(sid)))
+                .values(
+                    status=EstimateStatus.pending,
+                    updated_at=datetime.now(UTC) - timedelta(seconds=age_seconds),
+                )
+            )
+            await db.commit()
+        return sid
+
+    async def test_stale_pending_run_fails_on_admin_read(
+        self, admin_client, session_factory, install
+    ):
+        sid = await self._pending_with_age(
+            admin_client, session_factory, install, STALL_AFTER + 60
+        )
+        admin = (await admin_client.get(f"/api/admin/ai/sessions/{sid}/estimate")).json()
+        assert admin["status"] == "failed"
+        assert "pipeline_stalled" in admin["error"]
+
+    async def test_stale_pending_run_fails_on_public_read(
+        self, admin_client, session_factory, install
+    ):
+        sid = await self._pending_with_age(
+            admin_client, session_factory, install, STALL_AFTER + 60
+        )
+        public = (await admin_client.get(f"/api/intake/{sid}/estimate")).json()
+        assert public["status"] == "failed"
+
+    async def test_fresh_pending_run_is_left_alone(
+        self, admin_client, session_factory, install
+    ):
+        sid = await self._pending_with_age(admin_client, session_factory, install, 0)
+        admin = (await admin_client.get(f"/api/admin/ai/sessions/{sid}/estimate")).json()
+        assert admin["status"] == "pending"
