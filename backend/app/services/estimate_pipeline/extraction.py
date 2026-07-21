@@ -23,8 +23,12 @@ EXTRACTION_SYSTEM_PROMPT = (
     "You are a data-extraction engine for a personal-injury intake platform. You are "
     "given one claimant's questionnaire answers as `- [slug] question: answer` lines. "
     "Map them into the provided JSON schema. Rules:\n"
+    "- An answer the claimant gave IS a stated fact: copy it into the matching schema "
+    "field. Leaving a stated answer out of the fields is an extraction ERROR, not "
+    "caution — notes are no substitute for populating the fields themselves.\n"
     "- Extract FACTS only. Do not estimate case value, damages, fault percentages, or "
-    "severity. Do not output dollar figures beyond amounts the claimant reported.\n"
+    "severity. Do not output dollar figures beyond amounts the claimant reported "
+    "(claimant-reported amounts DO belong in the fields, at the stated confidence).\n"
     "- NEVER infer a value that was not stated. Use null for anything not answered or "
     "not derivable from an explicit answer. '(not answered)' means null.\n"
     "- Set `documented` true ONLY where the claimant affirmatively indicated a document "
@@ -58,7 +62,12 @@ def build_extraction_messages(
 
 
 _EXPECTED_KEYS = set(CanonicalExtraction.model_fields)
-_EMPTY_DUMP = CanonicalExtraction().model_dump()
+# Emptiness is judged on the fact-bearing sections only: a model can fill
+# extraction_notes with commentary while refusing to populate a single fact
+# (observed with Kimi K3), and that is still not an extraction.
+_EMPTY_FACTS = {
+    k: v for k, v in CanonicalExtraction().model_dump().items() if k != "extraction_notes"
+}
 
 
 def parse_extraction(content: str) -> CanonicalExtraction:
@@ -82,8 +91,12 @@ def parse_extraction(content: str) -> CanonicalExtraction:
                 f"reply has none of the expected extraction sections (got: {sorted(data)[:8]})"
             )
     extraction = CanonicalExtraction.model_validate(data)
-    if extraction.model_dump() == _EMPTY_DUMP:
-        raise ValueError("extraction contained no facts at all (every field null)")
+    dump = extraction.model_dump()
+    if {k: dump[k] for k in _EMPTY_FACTS} == _EMPTY_FACTS:
+        raise ValueError(
+            "every fact field is null — the claimant's stated answers must be mapped "
+            "into the schema fields; notes alone are not an extraction"
+        )
     return extraction
 
 

@@ -260,7 +260,27 @@ class TestSchemaRepair:
         d.hooks["case_extraction"] = lambda nth: {"meta": {}}
         _, admin = await _run(admin_client, session_factory, d)
         assert admin["status"] == "failed"
-        assert "no facts" in admin["error"]
+        assert "fact field is null" in admin["error"]
+
+    async def test_notes_only_extraction_counts_as_factless(
+        self, admin_client, session_factory, install
+    ):
+        """Kimi K3 filled extraction_notes with commentary while leaving every
+        fact field null; that must trigger the repair, not pass as content."""
+        notes_only = {
+            "extraction_notes": {
+                "model_refusals": ["no fields populated — prohibited inferences"],
+                "missing_driver_fields": ["incident state and county"],
+            }
+        }
+        d = install(PipelineDispatcher())
+        d.hooks["case_extraction"] = lambda nth: (
+            notes_only if nth == 0 else EXTRACTION_REAR_END_CA
+        )
+        public, _ = await _run(admin_client, session_factory, d)
+        assert public["status"] == "completed"
+        assert public["payout_max"] > 0
+        assert sum(1 for c in d.calls if c["schema_name"] == "case_extraction") == 2
 
 
 class TestStallHealing:
