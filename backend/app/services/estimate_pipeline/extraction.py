@@ -70,7 +70,7 @@ _EMPTY_FACTS = {
 }
 
 
-def parse_extraction(content: str) -> CanonicalExtraction:
+def parse_extraction(content: str, answered_count: int = -1) -> CanonicalExtraction:
     """Raises ValueError/ValidationError on an unusable reply.
 
     The canonical schema tolerates missing fields by design (unasked facts
@@ -78,7 +78,12 @@ def parse_extraction(content: str) -> CanonicalExtraction:
     all-defaults extraction and publish a confident-looking $0 estimate.
     Guard against that: unwrap a single-key envelope, reject shapes with no
     known section, and reject an extraction carrying no facts at all — each
-    raise gives the schema-repair retry a chance to recover."""
+    raise gives the schema-repair retry a chance to recover.
+
+    ``answered_count`` is how many questionnaire answers the model was given.
+    0 disables the factless guard: with nothing to extract, an all-null
+    extraction is the truth, and the pipeline should publish its honest
+    low-confidence result instead of failing."""
     data = extract_json_object(content)
     if not (_EXPECTED_KEYS & set(data)):
         wrapped = [
@@ -92,10 +97,15 @@ def parse_extraction(content: str) -> CanonicalExtraction:
             )
     extraction = CanonicalExtraction.model_validate(data)
     dump = extraction.model_dump()
-    if {k: dump[k] for k in _EMPTY_FACTS} == _EMPTY_FACTS:
+    if answered_count != 0 and {k: dump[k] for k in _EMPTY_FACTS} == _EMPTY_FACTS:
+        given = (
+            f" although {answered_count} questionnaire answers were provided"
+            if answered_count > 0
+            else ""
+        )
         raise ValueError(
-            "every fact field is null — the claimant's stated answers must be mapped "
-            "into the schema fields; notes alone are not an extraction"
+            f"every fact field is null{given} — the claimant's stated answers must be "
+            "mapped into the schema fields; notes alone are not an extraction"
         )
     return extraction
 
@@ -109,6 +119,8 @@ async def run_extraction(
 ) -> CanonicalExtraction:
     """One temperature-0 structured call. Raises OpenRouterError, ValueError,
     or ValidationError — the orchestrator fails the run on any of them."""
+    answered = sum(1 for _, _, answer in qa_pairs if answer and answer != "(not answered)")
+
     async def _call(messages: list[dict]) -> str:
         return await openrouter.chat_completion(
             api_key,
@@ -123,7 +135,9 @@ async def run_extraction(
         )
 
     return await call_with_schema_repair(
-        _call, build_extraction_messages(injury_type_name, qa_pairs), parse_extraction
+        _call,
+        build_extraction_messages(injury_type_name, qa_pairs),
+        lambda content: parse_extraction(content, answered_count=answered),
     )
 
 

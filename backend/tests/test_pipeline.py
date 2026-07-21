@@ -315,6 +315,22 @@ class TestSchemaRepair:
         assert sum(1 for c in d.calls if c["schema_name"] == "case_extraction") == 2
 
 
+class TestParseExtractionFactlessGuard:
+    FACTLESS = '{"meta": {"state": null}, "economic": {}}'
+
+    def test_factless_raises_when_answers_were_given(self):
+        from app.services.estimate_pipeline.extraction import parse_extraction
+
+        with pytest.raises(ValueError, match="3 questionnaire answers"):
+            parse_extraction(self.FACTLESS, answered_count=3)
+
+    def test_factless_is_legitimate_for_unanswered_intake(self):
+        from app.services.estimate_pipeline.extraction import parse_extraction
+
+        extraction = parse_extraction(self.FACTLESS, answered_count=0)
+        assert extraction.meta.state is None
+
+
 class TestStallHealing:
     async def _pending_with_age(self, admin_client, session_factory, install, age_seconds):
         install(PipelineDispatcher())
