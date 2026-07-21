@@ -17,6 +17,7 @@ from app.models import (
 from app.schemas import (
     AdviceApplyIn,
     CaseEstimateAdminOut,
+    CreditsOut,
     EstimateAdviceOut,
     OpenRouterModelOut,
     QuestionIn,
@@ -44,6 +45,45 @@ async def list_models(db: DbSession) -> list[dict]:
         return await openrouter.fetch_models(row.openrouter_api_key)
     except OpenRouterError as exc:
         raise AppError(502, exc.code, exc.message) from exc
+
+
+@router.get("/credits", response_model=CreditsOut)
+async def get_credits(db: DbSession) -> CreditsOut:
+    """OpenRouter account balance. /credits may reject plain inference keys,
+    so fall back to the key's own limit info when no provisioning key is saved."""
+    row = await get_app_settings(db)
+    key = row.openrouter_provisioning_key or row.openrouter_api_key
+    if not key:
+        raise AppError(400, "ai_key_missing", "Save an OpenRouter API key first")
+    try:
+        data = await openrouter.fetch_credits(key)
+        total = float(data.get("total_credits") or 0)
+        usage = float(data.get("total_usage") or 0)
+        return CreditsOut(
+            total_credits=total, total_usage=usage, remaining=total - usage, source="credits"
+        )
+    except OpenRouterError as exc:
+        if exc.code != "credits_forbidden" or row.openrouter_provisioning_key:
+            raise AppError(502, exc.code, exc.message) from exc
+    try:
+        info = await openrouter.fetch_key_info(row.openrouter_api_key)
+    except OpenRouterError as exc:
+        raise AppError(502, exc.code, exc.message) from exc
+    limit = info.get("limit")
+    if limit is None:
+        raise AppError(
+            403,
+            "provisioning_key_required",
+            "The API key cannot read the account balance — add a provisioning key",
+        )
+    usage = float(info.get("usage") or 0)
+    remaining = info.get("limit_remaining")
+    return CreditsOut(
+        total_credits=float(limit),
+        total_usage=usage,
+        remaining=float(remaining) if remaining is not None else float(limit) - usage,
+        source="key",
+    )
 
 
 @router.post("/test")

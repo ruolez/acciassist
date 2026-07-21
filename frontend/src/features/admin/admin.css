@@ -1160,6 +1160,17 @@
   font-size: 0.8rem;
   color: var(--text-secondary);
 }
+.credits-remaining {
+  margin: 0;
+  font-size: 1.9rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.credits-remaining .muted {
+  font-size: 0.9rem;
+  font-weight: 400;
+  letter-spacing: normal;
+}
 .toolbar {
   display: flex;
   align-items: center;

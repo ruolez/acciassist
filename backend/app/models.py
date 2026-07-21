@@ -507,6 +507,8 @@ class AppSettings(Base):
     # Public origin used to build links in emails, e.g. "https://acciassist.com".
     app_base_url: Mapped[str | None] = mapped_column(String(255), nullable=True)
     openrouter_api_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # Management/provisioning key — only needed to read the account credit balance.
+    openrouter_provisioning_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
     openrouter_model: Mapped[str | None] = mapped_column(String(255), nullable=True)
     # Estimate-pipeline knobs. comps_model NULL → main model + ":online".
     comps_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)

@@ -100,6 +100,39 @@ def clear_models_cache() -> None:
     _models_cache = None
 
 
+async def _get_json(path: str, api_key: str) -> dict:
+    try:
+        async with httpx.AsyncClient(timeout=_MODELS_TIMEOUT) as client:
+            resp = await client.get(f"{OPENROUTER_BASE}{path}", headers=_headers(api_key))
+    except httpx.TimeoutException as exc:
+        raise OpenRouterError("timeout", "OpenRouter did not respond in time") from exc
+    except httpx.HTTPError as exc:
+        raise OpenRouterError("upstream_error", f"Could not reach OpenRouter: {exc}") from exc
+    if resp.status_code == 403:
+        raise OpenRouterError(
+            "credits_forbidden",
+            "This key is not allowed to read the account balance",
+        )
+    if resp.status_code != 200:
+        raise _error_from_status(resp.status_code, resp.text)
+    try:
+        return resp.json().get("data") or {}
+    except json.JSONDecodeError as exc:
+        raise OpenRouterError("upstream_error", "OpenRouter returned invalid JSON") from exc
+
+
+async def fetch_credits(api_key: str) -> dict:
+    """Account-wide balance: ``{"total_credits": float, "total_usage": float}``.
+    OpenRouter may require a management/provisioning key for this endpoint."""
+    return await _get_json("/credits", api_key)
+
+
+async def fetch_key_info(api_key: str) -> dict:
+    """Info about the key itself (``usage``, ``limit``, ``limit_remaining``…) —
+    works with a plain inference key, unlike /credits."""
+    return await _get_json("/key", api_key)
+
+
 def _structured_output_rejected(status: int, body: str) -> bool:
     lowered = body.lower()
     if status not in (400, 404, 422):

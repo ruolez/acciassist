@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 
 import { api, ApiError } from "../../api/client";
-import type { AppSettings, EmailLogEntry, OpenRouterModel } from "../../api/types";
+import type { AppSettings, CreditsInfo, EmailLogEntry, OpenRouterModel } from "../../api/types";
 import { DocumentTypesCard } from "./DocumentTypesCard";
 import { humanize } from "../../lib/format";
 import { useActionError } from "./useActionError";
@@ -23,6 +23,7 @@ type FormState = {
   from_name: string;
   app_base_url: string;
   openrouter_api_key: string;
+  openrouter_provisioning_key: string;
   openrouter_model: string;
   comps_enabled: boolean;
   comps_model: string;
@@ -41,6 +42,7 @@ function toForm(s: AppSettings): FormState {
     from_name: s.from_name,
     app_base_url: s.app_base_url ?? "",
     openrouter_api_key: "",
+    openrouter_provisioning_key: "",
     openrouter_model: s.openrouter_model ?? "",
     comps_enabled: s.comps_enabled,
     comps_model: s.comps_model ?? "",
@@ -129,6 +131,76 @@ function ModelSelect({
   );
 }
 
+const money = (n: number) => `$${n.toFixed(2)}`;
+
+function CreditsCard({ keySaved }: { keySaved: boolean }) {
+  const { data, error, isFetching, refetch } = useQuery({
+    queryKey: ["admin", "ai", "credits"],
+    queryFn: () => api<CreditsInfo>("/admin/ai/credits"),
+    enabled: keySaved,
+    staleTime: 60 * 1000,
+    retry: false,
+  });
+  const needsProvisioningKey =
+    error instanceof ApiError && error.code === "provisioning_key_required";
+
+  return (
+    <div className="card settings-form">
+      <h2>OpenRouter balance</h2>
+      {!keySaved && <p className="muted">Save an API key first to check the balance.</p>}
+      {keySaved && data && (
+        <>
+          <p className="credits-remaining">
+            {money(data.remaining)}{" "}
+            <span className="muted">
+              {data.source === "credits" ? "remaining" : "left on this key's limit"}
+            </span>
+          </p>
+          <p className="muted">
+            {money(data.total_usage)} used of {money(data.total_credits)}{" "}
+            {data.source === "credits" ? "purchased" : "key limit"}
+          </p>
+        </>
+      )}
+      {needsProvisioningKey && (
+        <p className="muted">
+          The inference key can&apos;t read the account balance. Create a provisioning key at
+          openrouter.ai → Settings → Provisioning Keys and save it above.
+        </p>
+      )}
+      {error && !needsProvisioningKey && (
+        <p className="error-text">
+          Could not load the balance
+          {error instanceof ApiError ? ` — ${error.message}` : ""}.
+        </p>
+      )}
+      <div className="inline-actions">
+        <button
+          type="button"
+          className="btn btn-outline"
+          disabled={!keySaved || isFetching}
+          onClick={() => refetch()}
+        >
+          {isFetching ? "Refreshing…" : "Refresh"}
+        </button>
+        <a
+          className="btn btn-primary"
+          href="https://openrouter.ai/settings/credits"
+          target="_blank"
+          rel="noreferrer"
+        >
+          Add credits ↗
+        </a>
+      </div>
+      <p className="field-hint">
+        OpenRouter has no API for charging a saved card, so top-ups happen on their credits page —
+        it opens in a new tab with your default payment method, and you can enable Auto Top-Up
+        there for hands-off replenishment.
+      </p>
+    </div>
+  );
+}
+
 export function SettingsPage() {
   usePageTitle("Settings");
   const queryClient = useQueryClient();
@@ -166,6 +238,8 @@ export function SettingsPage() {
           app_base_url: f.app_base_url || null,
           // Empty field means "keep current key"; type a value to change it.
           openrouter_api_key: f.openrouter_api_key === "" ? null : f.openrouter_api_key,
+          openrouter_provisioning_key:
+            f.openrouter_provisioning_key === "" ? null : f.openrouter_provisioning_key,
           openrouter_model: f.openrouter_model || null,
           comps_enabled: f.comps_enabled,
           comps_model: f.comps_model || null,
@@ -179,6 +253,7 @@ export function SettingsPage() {
       clear();
       queryClient.setQueryData(KEY, saved);
       setForm(toForm(saved));
+      queryClient.invalidateQueries({ queryKey: ["admin", "ai", "credits"] });
     },
     onError: (e) => onError(e, "Could not save settings"),
   });
@@ -423,6 +498,20 @@ export function SettingsPage() {
                   autoComplete="new-password"
                 />
               </div>
+              <div className="field">
+                <label>Provisioning key (optional — for balance)</label>
+                <input
+                  className="input"
+                  type="password"
+                  value={form.openrouter_provisioning_key}
+                  onChange={(e) => set({ openrouter_provisioning_key: e.target.value })}
+                  placeholder={data?.openrouter_provisioning_key_set ? "•••••••• (saved)" : "sk-or-…"}
+                  autoComplete="new-password"
+                />
+                <p className="field-hint">
+                  Only used to read the account credit balance below.
+                </p>
+              </div>
               <div className="field field-wide">
                 <label>Model</label>
                 <ModelSelect
@@ -456,6 +545,8 @@ export function SettingsPage() {
               )}
             </div>
           </div>
+
+          <CreditsCard keySaved={keySaved} />
 
           <div className="card settings-form">
             <h2>Estimate pipeline</h2>

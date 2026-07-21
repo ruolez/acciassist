@@ -22,6 +22,7 @@ def _to_out(row: AppSettings) -> SettingsOut:
         from_name=row.from_name,
         app_base_url=row.app_base_url,
         openrouter_api_key_set=bool(row.openrouter_api_key),
+        openrouter_provisioning_key_set=bool(row.openrouter_provisioning_key),
         openrouter_model=row.openrouter_model,
         comps_enabled=row.comps_enabled,
         comps_model=row.comps_model,
@@ -49,6 +50,8 @@ async def update_settings(data: SettingsIn, db: DbSession) -> SettingsOut:
     row.app_base_url = data.app_base_url.rstrip("/") if data.app_base_url else None
     if data.openrouter_api_key is not None:
         row.openrouter_api_key = data.openrouter_api_key or None
+    if data.openrouter_provisioning_key is not None:
+        row.openrouter_provisioning_key = data.openrouter_provisioning_key or None
     row.openrouter_model = data.openrouter_model
     row.comps_enabled = data.comps_enabled
     row.comps_model = data.comps_model or None

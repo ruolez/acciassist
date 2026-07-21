@@ -375,11 +375,19 @@ export type AppSettings = {
   from_name: string;
   app_base_url: string | null;
   openrouter_api_key_set: boolean;
+  openrouter_provisioning_key_set: boolean;
   openrouter_model: string | null;
   comps_enabled: boolean;
   comps_model: string | null;
   sample_count: number;
   contingency_fee_pct: number;
+};
+
+export type CreditsInfo = {
+  total_credits: number;
+  total_usage: number;
+  remaining: number;
+  source: "credits" | "key";
 };
 
 export type ComparativeRule = "pure" | "modified_50" | "modified_51" | "contributory";

@@ -332,6 +332,7 @@ class SettingsOut(ORMModel):
     from_name: str
     app_base_url: str | None
     openrouter_api_key_set: bool
+    openrouter_provisioning_key_set: bool
     openrouter_model: str | None
     comps_enabled: bool
     comps_model: str | None
@@ -351,6 +352,8 @@ class SettingsIn(BaseModel):
     app_base_url: str | None = Field(default=None, max_length=255)
     # None/omitted keeps the stored key; "" clears it.
     openrouter_api_key: str | None = Field(default=None, max_length=255)
+    # None/omitted keeps the stored key; "" clears it.
+    openrouter_provisioning_key: str | None = Field(default=None, max_length=255)
     openrouter_model: str | None = Field(default=None, max_length=255)
     comps_enabled: bool = False
     comps_model: str | None = Field(default=None, max_length=255)
@@ -362,6 +365,15 @@ class SettingsIn(BaseModel):
 
 class TestEmailIn(BaseModel):
     to_email: EmailStr
+
+
+class CreditsOut(BaseModel):
+    total_credits: float
+    total_usage: float
+    remaining: float
+    # "credits" = account balance; "key" = per-key limit fallback when the
+    # inference key cannot read the account-wide /credits endpoint.
+    source: Literal["credits", "key"]
 
 
 class OpenRouterModelOut(BaseModel):
