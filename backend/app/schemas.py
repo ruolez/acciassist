@@ -480,6 +480,14 @@ class CaseUpdateOut(ORMModel):
     created_at: datetime
 
 
+class CaseDocumentOut(ORMModel):
+    id: int
+    original_name: str
+    content_type: str
+    size_bytes: int
+    created_at: datetime
+
+
 class CaseListOut(BaseModel):
     id: int
     stage: CaseStage
@@ -488,6 +496,8 @@ class CaseListOut(BaseModel):
     estimate_min: int | None
     estimate_max: int | None
     followup_pending: bool = False
+    latest_update_body: str | None = None
+    latest_update_at: datetime | None = None
 
 
 class CaseDetailOut(CaseListOut):

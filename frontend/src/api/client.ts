@@ -39,3 +39,24 @@ export async function api<T>(path: string, options: Options = {}): Promise<T> {
   }
   return data as T;
 }
+
+/** Multipart upload — the browser sets the boundary header itself. */
+export async function apiUpload<T>(path: string, file: File): Promise<T> {
+  const form = new FormData();
+  form.append("file", file);
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: "POST",
+    credentials: "include",
+    body: form,
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    const err = data?.error;
+    throw new ApiError(
+      res.status,
+      err?.code ?? "unknown",
+      err?.message ?? "Upload failed",
+    );
+  }
+  return data as T;
+}

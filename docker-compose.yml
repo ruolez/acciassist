@@ -30,6 +30,7 @@ services:
       - "${BACKEND_PORT}:8000"
     volumes:
       - ./backend:/app
+      - uploads:/data/uploads
     depends_on:
       db:
         condition: service_healthy
@@ -60,3 +61,4 @@ services:
 
 volumes:
   pgdata:
+  uploads:

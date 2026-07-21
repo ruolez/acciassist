@@ -3,7 +3,7 @@ import { useState } from "react";
 
 import { api, ApiError } from "../../api/client";
 import type { ComparativeRule, JurisdictionRule } from "../../api/types";
-import { usePageTitle } from "./usePageTitle";
+import { usePageTitle } from "../../lib/usePageTitle";
 import "./admin.css";
 
 const KEY = ["admin", "jurisdictions"];

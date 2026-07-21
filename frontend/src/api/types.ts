@@ -307,6 +307,16 @@ export type CaseListItem = {
   estimate_min: number | null;
   estimate_max: number | null;
   followup_pending: boolean;
+  latest_update_body: string | null;
+  latest_update_at: string | null;
+};
+
+export type CaseDocument = {
+  id: number;
+  original_name: string;
+  content_type: string;
+  size_bytes: number;
+  created_at: string;
 };
 
 export type CaseDetail = CaseListItem & {

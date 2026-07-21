@@ -5,6 +5,7 @@ import { Link, useParams } from "react-router-dom";
 import { api } from "../../api/client";
 import type {
   AdminCaseDetail,
+  CaseDocument,
   CaseEstimateAdmin,
   CaseStage,
   EstimateAdvice,
@@ -12,11 +13,36 @@ import type {
 } from "../../api/types";
 import { CASE_STAGES, STAGE_LABELS } from "../account/stages";
 import { AdviceCard } from "./AdviceCard";
-import { relativeTime } from "./format";
+import { formatBytes, relativeTime } from "../../lib/format";
 import { PipelineEstimateCard } from "./PipelineEstimateCard";
 import { useActionError } from "./useActionError";
-import { usePageTitle } from "./usePageTitle";
+import { usePageTitle } from "../../lib/usePageTitle";
 import "./admin.css";
+
+function ClientDocumentsCard({ caseId }: { caseId: string }) {
+  const { data: docs } = useQuery({
+    queryKey: ["admin", "cases", caseId, "documents"],
+    queryFn: () => api<CaseDocument[]>(`/admin/cases/${caseId}/documents`),
+  });
+  if (!docs || docs.length === 0) return null;
+  return (
+    <div className="card admin-docs">
+      <h2>Client documents</h2>
+      <div className="admin-doc-list">
+        {docs.map((d) => (
+          <div key={d.id} className="admin-doc-row">
+            <a href={`/api/admin/cases/${caseId}/documents/${d.id}/download`}>
+              {d.original_name}
+            </a>
+            <span className="muted">
+              {formatBytes(d.size_bytes)} · {relativeTime(d.created_at)}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function EstimateGapCard({
   sessionId,
@@ -203,6 +229,8 @@ export function CaseDetailAdminPage() {
           </p>
         </div>
       </div>
+
+      <ClientDocumentsCard caseId={String(data.id)} />
 
       {data.intake_session_id && (
         <PipelineEstimateCard

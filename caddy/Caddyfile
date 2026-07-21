@@ -21,6 +21,9 @@
 	# JSON API -> FastAPI. Routes are mounted under /api, so forward the
 	# prefix unchanged (do NOT strip it).
 	@api path /api/*
+	request_body @api {
+		max_size 20MB
+	}
 	reverse_proxy @api backend:8000
 
 	# Everything else -> the built static SPA (nginx serving /dist).

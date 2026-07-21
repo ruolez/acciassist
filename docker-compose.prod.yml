@@ -29,6 +29,8 @@ services:
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2
+    volumes:
+      - uploads:/data/uploads
     depends_on:
       db:
         condition: service_healthy
@@ -59,5 +61,6 @@ services:
 
 volumes:
   pgdata:
+  uploads:
   caddy_data:
   caddy_config:

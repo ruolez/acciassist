@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import { api, ApiError } from "../../api/client";
 import { Logo } from "../../components/Logo";
+import { usePageTitle } from "../../lib/usePageTitle";
 import "./account.css";
 
 const schema = z
@@ -20,6 +21,7 @@ const schema = z
 type ResetForm = z.infer<typeof schema>;
 
 export function ResetPasswordPage() {
+  usePageTitle("Choose a new password");
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token") ?? "";
   const navigate = useNavigate();

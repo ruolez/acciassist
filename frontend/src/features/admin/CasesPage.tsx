@@ -5,8 +5,8 @@ import { Link } from "react-router-dom";
 import { api } from "../../api/client";
 import type { AdminCaseListItem, CaseStage } from "../../api/types";
 import { CASE_STAGES, STAGE_LABELS } from "../account/stages";
-import { EmptyState } from "./EmptyState";
-import { usePageTitle } from "./usePageTitle";
+import { EmptyState } from "../../components/EmptyState";
+import { usePageTitle } from "../../lib/usePageTitle";
 import "./admin.css";
 
 export function CasesPage() {

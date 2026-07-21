@@ -3,10 +3,31 @@ import { Link, useOutletContext } from "react-router-dom";
 
 import { api } from "../../api/client";
 import type { CaseListItem, User } from "../../api/types";
-import { formatRange, STAGE_LABELS } from "./stages";
+import { relativeTime } from "../../lib/format";
+import { usePageTitle } from "../../lib/usePageTitle";
+import { CASE_STAGES, formatRange, STAGE_LABELS } from "./stages";
 import "./account.css";
 
+function StageMeter({ stage }: { stage: CaseListItem["stage"] }) {
+  const current = CASE_STAGES.indexOf(stage);
+  return (
+    <div
+      className="stage-meter"
+      role="img"
+      aria-label={`Stage ${current + 1} of ${CASE_STAGES.length}: ${STAGE_LABELS[stage]}`}
+    >
+      {CASE_STAGES.map((s, i) => (
+        <span
+          key={s}
+          className={`stage-meter-seg ${i < current ? "done" : i === current ? "current" : ""}`}
+        />
+      ))}
+    </div>
+  );
+}
+
 export function DashboardPage() {
+  usePageTitle("Your cases");
   const user = useOutletContext<User>();
   const { data, isLoading, isError } = useQuery({
     queryKey: ["user", "cases"],
@@ -44,6 +65,21 @@ export function DashboardPage() {
                   {STAGE_LABELS[c.stage]}
                 </span>
               </div>
+              <StageMeter stage={c.stage} />
+              {c.latest_update_body && (
+                <p className="case-card-update">
+                  <span className="case-card-update-label">Latest update</span>
+                  {c.latest_update_body.length > 140
+                    ? `${c.latest_update_body.slice(0, 140)}…`
+                    : c.latest_update_body}
+                  {c.latest_update_at && (
+                    <span className="case-card-update-when">
+                      {" "}
+                      · {relativeTime(c.latest_update_at)}
+                    </span>
+                  )}
+                </p>
+              )}
               <div className="case-card-meta">
                 <span>Opened {new Date(c.created_at).toLocaleDateString()}</span>
                 {formatRange(c.estimate_min, c.estimate_max) && (
@@ -54,11 +90,22 @@ export function DashboardPage() {
                 {c.followup_pending && (
                   <span className="followup-badge">Follow-up available</span>
                 )}
+                <span className="case-card-open">
+                  View case <span aria-hidden="true">→</span>
+                </span>
               </div>
             </Link>
           ))}
         </div>
       )}
+
+      <div className="card help-card">
+        <h2>Questions about your case?</h2>
+        <p className="muted">
+          Reply to any email from our team and it will reach the person handling your
+          case. We read everything.
+        </p>
+      </div>
     </>
   );
 }

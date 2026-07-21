@@ -6,12 +6,14 @@ import { z } from "zod";
 
 import { api } from "../../api/client";
 import { Logo } from "../../components/Logo";
+import { usePageTitle } from "../../lib/usePageTitle";
 import "./account.css";
 
 const schema = z.object({ email: z.string().email("Enter a valid email") });
 type ForgotForm = z.infer<typeof schema>;
 
 export function ForgotPasswordPage() {
+  usePageTitle("Reset password");
   const [sent, setSent] = useState(false);
   const {
     register,

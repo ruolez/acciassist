@@ -24,6 +24,11 @@ class Settings(BaseSettings):
     # In-process rate limiting for login/lead/intake endpoints; tests disable it.
     rate_limit_enabled: bool = True
 
+    # Client document uploads (case files: bills, records, photos).
+    upload_dir: str = "/data/uploads"
+    max_upload_mb: int = 15
+    max_documents_per_case: int = 30
+
     @property
     def is_production(self) -> bool:
         return self.app_env == "production"

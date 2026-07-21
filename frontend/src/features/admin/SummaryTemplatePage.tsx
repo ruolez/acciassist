@@ -6,7 +6,7 @@ import { api } from "../../api/client";
 import type { InjuryType, Question, SummaryTemplate } from "../../api/types";
 import { findUnknownTokens } from "./template-tokens";
 import { useActionError } from "./useActionError";
-import { usePageTitle } from "./usePageTitle";
+import { usePageTitle } from "../../lib/usePageTitle";
 import "./admin.css";
 
 export function SummaryTemplatePage() {

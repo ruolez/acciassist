@@ -1,16 +1,17 @@
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { api } from "../../api/client";
 import type { CaseDetail } from "../../api/types";
-import { formatRange, STAGE_LABELS } from "./stages";
+import { relativeTime } from "../../lib/format";
+import { usePageTitle } from "../../lib/usePageTitle";
+import { DocumentsSection } from "./DocumentsSection";
+import { formatRange, STAGE_EXPLANATIONS, STAGE_LABELS } from "./stages";
 import { StageProgress } from "./StageProgress";
 import "./account.css";
 
 export function CaseDetailPage() {
   const { caseId } = useParams();
-  const [showSummary, setShowSummary] = useState(false);
   const { data, isLoading, isError } = useQuery({
     queryKey: ["user", "cases", caseId],
     queryFn: () => api<CaseDetail>(`/me/cases/${caseId}`),
@@ -19,6 +20,9 @@ export function CaseDetailPage() {
     // poll until it lands.
     refetchInterval: (q) => (q.state.data?.estimate_status === "pending" ? 3000 : false),
   });
+  usePageTitle(
+    data ? `${data.injury_type_name ?? "Your case"} · #${data.id}` : "Your case",
+  );
 
   if (isLoading) return <div className="portal-empty">Loading your case…</div>;
   if (isError || !data)
@@ -40,8 +44,11 @@ export function CaseDetailPage() {
         <strong>{STAGE_LABELS[data.stage]}</strong>
       </p>
 
-      <div className="card" style={{ padding: "var(--space-5)" }}>
+      <div className="card stage-card">
         <StageProgress stage={data.stage} />
+        <p className="stage-explainer">
+          <strong>What&apos;s happening now:</strong> {STAGE_EXPLANATIONS[data.stage]}
+        </p>
       </div>
 
       {data.followup_pending && (
@@ -83,8 +90,14 @@ export function CaseDetailPage() {
               A broad first estimate — answering the follow-up questions narrows it.
             </span>
           )}
+          <span className="estimate-disclaimer">
+            Estimates are informational, based on what you&apos;ve shared — not a promise
+            of any outcome.
+          </span>
         </div>
       )}
+
+      <DocumentsSection caseId={String(data.id)} />
 
       <div className="portal-section">
         <h2>Updates from our team</h2>
@@ -93,16 +106,22 @@ export function CaseDetailPage() {
             No updates yet — we&apos;ll email you as soon as there&apos;s news.
           </div>
         ) : (
-          <div className="updates-feed">
+          <div className="portal-timeline">
             {updates.map((u) => (
               <div
                 key={u.id}
-                className={`update-item ${u.kind === "stage_change" ? "stage-change" : ""}`}
+                className={`portal-timeline-item ${u.kind === "stage_change" ? "stage-change" : ""}`}
               >
-                <p className="update-item-body">{u.body}</p>
-                <span className="update-item-date">
-                  {new Date(u.created_at).toLocaleString()}
-                </span>
+                <span className="portal-timeline-dot" aria-hidden="true" />
+                <div className="update-item">
+                  <p className="update-item-body">{u.body}</p>
+                  <span
+                    className="update-item-date"
+                    title={new Date(u.created_at).toLocaleString()}
+                  >
+                    {relativeTime(u.created_at)}
+                  </span>
+                </div>
               </div>
             ))}
           </div>
@@ -112,24 +131,17 @@ export function CaseDetailPage() {
       {data.summary && (
         <div className="portal-section">
           <h2>Your intake summary</h2>
-          <div className="card" style={{ padding: "var(--space-5)" }}>
-            {showSummary ? (
-              <div className="summary-body" style={{ whiteSpace: "pre-wrap" }}>
-                {data.summary.body}
-              </div>
-            ) : (
-              <button className="btn btn-outline" onClick={() => setShowSummary(true)}>
-                Show what you told us
-              </button>
-            )}
-          </div>
+          <details className="card summary-details">
+            <summary>Show what you told us</summary>
+            <div className="summary-body">{data.summary.body}</div>
+          </details>
         </div>
       )}
 
       <div className="portal-section">
         <h2>Your contact details</h2>
-        <div className="card" style={{ padding: "var(--space-5)" }}>
-          <p style={{ margin: 0 }}>
+        <div className="card contact-card">
+          <p className="contact-lines">
             {data.name}
             <br />
             {data.email}
@@ -139,6 +151,10 @@ export function CaseDetailPage() {
                 {data.phone}
               </>
             )}
+          </p>
+          <p className="muted contact-note">
+            This is how we reach you about your case. If anything changes, reply to any
+            of our emails and we&apos;ll update it.
           </p>
         </div>
       </div>

@@ -1684,3 +1684,30 @@
     transition: none;
   }
 }
+
+/* ── Client documents (case detail) ── */
+.admin-docs {
+  padding: var(--space-5) var(--space-6);
+  margin-bottom: var(--space-5);
+}
+.admin-docs h2 {
+  margin: 0 0 var(--space-3);
+  font-size: 1.05rem;
+}
+.admin-doc-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.admin-doc-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  font-size: 0.92rem;
+}
+.admin-doc-row a {
+  font-weight: 600;
+}
+.admin-doc-row a:hover {
+  text-decoration: underline;
+}

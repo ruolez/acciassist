@@ -3,9 +3,9 @@ import { useState } from "react";
 
 import { api } from "../../api/client";
 import type { IntakeSessionDetail, IntakeSessionSummary } from "../../api/types";
-import { EmptyState } from "./EmptyState";
-import { humanize, relativeTime } from "./format";
-import { usePageTitle } from "./usePageTitle";
+import { EmptyState } from "../../components/EmptyState";
+import { humanize, relativeTime } from "../../lib/format";
+import { usePageTitle } from "../../lib/usePageTitle";
 import "./admin.css";
 
 function SubmissionDetail({ sessionId }: { sessionId: string }) {

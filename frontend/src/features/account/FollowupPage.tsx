@@ -7,12 +7,14 @@ import type { AnswerValue, Followup } from "../../api/types";
 import { QuestionRenderer } from "../intake/QuestionRenderer";
 import { boundsError, isPageComplete, progressPercent } from "../intake/wizard-logic";
 import "../intake/intake.css";
+import { usePageTitle } from "../../lib/usePageTitle";
 import "./account.css";
 
 /** Portal follow-up wizard: the detail questions that narrow the estimate.
  * Answers live server-side (loaded with the questionnaire), so patients can
  * leave and resume from any device. */
 export function FollowupPage() {
+  usePageTitle("Follow-up questions");
   const { caseId } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();

@@ -8,7 +8,7 @@ import { z } from "zod";
 import { Logo } from "../../components/Logo";
 import { api, ApiError } from "../../api/client";
 import type { Admin } from "../../api/types";
-import { usePageTitle } from "./usePageTitle";
+import { usePageTitle } from "../../lib/usePageTitle";
 import "./admin.css";
 
 const schema = z.object({

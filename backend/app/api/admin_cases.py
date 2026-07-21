@@ -1,4 +1,5 @@
 from fastapi import APIRouter, BackgroundTasks
+from fastapi.responses import FileResponse
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
@@ -7,6 +8,7 @@ from app.errors import AppError
 from app.models import (
     STAGE_LABELS,
     Case,
+    CaseDocument,
     CaseEstimate,
     CaseStage,
     CaseUpdate,
@@ -19,10 +21,12 @@ from app.schemas import (
     AdminCaseDetailOut,
     AdminCaseListOut,
     AdminCaseUpdateOut,
+    CaseDocumentOut,
     CaseEstimateAdminOut,
     CaseStageIn,
     CaseUpdateIn,
 )
+from app.services.documents import document_path
 from app.services.leads import issue_token
 from app.services.notifications import (
     notify_case_update,
@@ -174,3 +178,26 @@ async def resend_invite(
     await db.commit()
     background_tasks.add_task(notify_lead_received, case.lead_id, raw)
     return {"ok": True}
+
+
+@router.get("/cases/{case_id}/documents", response_model=list[CaseDocumentOut])
+async def case_documents(case_id: int, db: DbSession) -> list[CaseDocument]:
+    await _load_case(db, case_id)
+    rows = await db.scalars(
+        select(CaseDocument)
+        .where(CaseDocument.case_id == case_id)
+        .order_by(CaseDocument.created_at.desc())
+    )
+    return list(rows)
+
+
+@router.get("/cases/{case_id}/documents/{doc_id}/download")
+async def download_case_document(case_id: int, doc_id: int, db: DbSession) -> FileResponse:
+    await _load_case(db, case_id)
+    doc = await db.get(CaseDocument, doc_id)
+    if doc is None or doc.case_id != case_id:
+        raise AppError(404, "not_found", "Document not found")
+    path = document_path(doc)
+    if not path.exists():
+        raise AppError(404, "file_missing", "The stored file is missing.")
+    return FileResponse(path, media_type=doc.content_type, filename=doc.original_name)

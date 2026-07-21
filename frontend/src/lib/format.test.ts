@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { humanize, relativeTime } from "./format";
+import { formatBytes, humanize, relativeTime } from "./format";
 
 describe("humanize", () => {
   test.each([
@@ -10,6 +10,16 @@ describe("humanize", () => {
     ["stage_changed", "Stage changed"],
   ])("turns %s into %s", (raw, expected) => {
     expect(humanize(raw)).toBe(expected);
+  });
+});
+
+describe("formatBytes", () => {
+  test.each([
+    [512, "512 B"],
+    [2048, "2 KB"],
+    [1_468_006, "1.4 MB"],
+  ])("renders %d bytes as %s", (bytes, expected) => {
+    expect(formatBytes(bytes)).toBe(expected);
   });
 });
 

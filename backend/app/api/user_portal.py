@@ -112,16 +112,19 @@ async def my_cases(user: CurrentUser, db: DbSession) -> list[CaseListOut]:
         select(Case)
         .where(Case.user_id == user.id)
         .order_by(Case.created_at.desc())
-        .options(selectinload(Case.lead))
+        .options(selectinload(Case.lead), selectinload(Case.updates))
     )
     out = []
     for case in cases:
         context = await _case_context(db, case)
+        latest = case.updates[-1] if case.updates else None
         out.append(
             CaseListOut(
                 id=case.id,
                 stage=case.stage,
                 created_at=case.created_at,
+                latest_update_body=latest.body if latest else None,
+                latest_update_at=latest.created_at if latest else None,
                 **{k: v for k, v in context.items() if not k.startswith("_")},
             )
         )

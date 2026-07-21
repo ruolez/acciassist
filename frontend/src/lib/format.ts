@@ -4,6 +4,13 @@ export function humanize(value: string): string {
   return spaced.charAt(0).toUpperCase() + spaced.slice(1);
 }
 
+/** "1.4 MB", "312 KB" — for file listings. */
+export function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 /** Compact relative timestamp for activity feeds; falls back to a date. */
 export function relativeTime(iso: string, now: Date = new Date()): string {
   const then = new Date(iso);

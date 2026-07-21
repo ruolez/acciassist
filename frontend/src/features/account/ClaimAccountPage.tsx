@@ -9,6 +9,7 @@ import { api, ApiError } from "../../api/client";
 import type { User } from "../../api/types";
 import { Logo } from "../../components/Logo";
 import { claimErrorMessage } from "./stages";
+import { usePageTitle } from "../../lib/usePageTitle";
 import "./account.css";
 
 const passwordSchema = z
@@ -61,6 +62,7 @@ function ResendLinkForm() {
 }
 
 export function ClaimAccountPage() {
+  usePageTitle("Create your account");
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token") ?? "";
   const navigate = useNavigate();

@@ -30,8 +30,13 @@ export function AccountLayout() {
       <header className="portal-topbar">
         <Logo size={36} withWordmark to="/account" />
         <div className="portal-topbar-user">
-          <span>{data.email}</span>
-          <button className="btn btn-ghost" onClick={() => logout.mutate()}>
+          <span className="portal-avatar" aria-hidden="true">
+            {(data.name || data.email).charAt(0).toUpperCase()}
+          </span>
+          <span className="portal-user-name" title={data.email}>
+            {data.name ? data.name.split(" ")[0] : data.email}
+          </span>
+          <button className="portal-logout" onClick={() => logout.mutate()}>
             Log out
           </button>
         </div>

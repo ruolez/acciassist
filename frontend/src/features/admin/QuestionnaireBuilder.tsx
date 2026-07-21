@@ -10,7 +10,7 @@ import { PageLayoutList } from "./PageLayoutList";
 import { QuestionEditor, type QuestionDraft } from "./QuestionEditor";
 import { TYPE_SHORT } from "./question-labels";
 import { useActionError } from "./useActionError";
-import { usePageTitle } from "./usePageTitle";
+import { usePageTitle } from "../../lib/usePageTitle";
 import "./admin.css";
 
 export function QuestionnaireBuilder() {

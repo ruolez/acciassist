@@ -3,9 +3,9 @@ import { useEffect, useMemo, useState } from "react";
 
 import { api, ApiError } from "../../api/client";
 import type { AppSettings, EmailLogEntry, OpenRouterModel } from "../../api/types";
-import { humanize } from "./format";
+import { humanize } from "../../lib/format";
 import { useActionError } from "./useActionError";
-import { usePageTitle } from "./usePageTitle";
+import { usePageTitle } from "../../lib/usePageTitle";
 import "./admin.css";
 
 const KEY = ["admin", "settings"];

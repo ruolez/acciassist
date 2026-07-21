@@ -8,6 +8,7 @@ import { z } from "zod";
 import { api, ApiError } from "../../api/client";
 import type { User } from "../../api/types";
 import { Logo } from "../../components/Logo";
+import { usePageTitle } from "../../lib/usePageTitle";
 import "./account.css";
 
 const schema = z.object({
@@ -17,6 +18,7 @@ const schema = z.object({
 type LoginForm = z.infer<typeof schema>;
 
 export function UserLogin() {
+  usePageTitle("Log in");
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [formError, setFormError] = useState<string | null>(null);

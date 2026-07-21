@@ -375,6 +375,11 @@ class Case(Base):
 
     user: Mapped["User"] = relationship(back_populates="cases")
     lead: Mapped["Lead"] = relationship()
+    documents: Mapped[list["CaseDocument"]] = relationship(
+        back_populates="case",
+        cascade="all, delete-orphan",
+        order_by="CaseDocument.created_at",
+    )
     updates: Mapped[list["CaseUpdate"]] = relationship(
         back_populates="case",
         cascade="all, delete-orphan",
@@ -404,6 +409,28 @@ class CaseUpdate(Base):
 
     case: Mapped["Case"] = relationship(back_populates="updates")
     admin: Mapped["AdminUser | None"] = relationship()
+
+
+class CaseDocument(Base):
+    """A file the client uploaded to support their case (bills, records,
+    photos). The file lives on disk under settings.upload_dir keyed by
+    ``stored_name``; the row keeps the original name for display/download."""
+
+    __tablename__ = "case_documents"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    case_id: Mapped[int] = mapped_column(
+        ForeignKey("cases.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    original_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    content_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
+    stored_name: Mapped[str] = mapped_column(String(80), unique=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    case: Mapped["Case"] = relationship(back_populates="documents")
 
 
 class JurisdictionRule(Base):

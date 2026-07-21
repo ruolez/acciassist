@@ -14,6 +14,7 @@ from app.api import (
     health,
     public_intake,
     user_auth,
+    user_documents,
     user_portal,
 )
 from app.config import settings
@@ -42,6 +43,12 @@ app.include_router(
     user_portal.router,
     prefix="/api/me",
     tags=["user-portal"],
+    dependencies=[Depends(get_current_user)],
+)
+app.include_router(
+    user_documents.router,
+    prefix="/api/me",
+    tags=["user-documents"],
     dependencies=[Depends(get_current_user)],
 )
 app.include_router(admin_auth.router, prefix="/api/admin", tags=["admin-auth"])
