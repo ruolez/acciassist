@@ -350,7 +350,9 @@ class SettingsIn(BaseModel):
     comps_enabled: bool = False
     comps_model: str | None = Field(default=None, max_length=255)
     sample_count: int = Field(default=5, ge=1, le=9)
-    contingency_fee_pct: float = Field(default=33.3, ge=10, le=50)
+    # AcciAssist's own service fee — the pitch is that there is NO attorney
+    # taking a 33-40% contingency cut, so this can go all the way to 0.
+    contingency_fee_pct: float = Field(default=10, ge=0, le=50)
 
 
 class TestEmailIn(BaseModel):

@@ -87,10 +87,22 @@ export function EstimateResultCard({
     );
   }
 
-  const isPipelineResult = estimate?.status === "completed" && estimate.disclaimer !== null;
+  const isPipelineResult =
+    estimate?.status === "completed" &&
+    estimate.disclaimer !== null &&
+    // A zero range reads as an insult, not an estimate — use the static
+    // fallback presentation instead.
+    (estimate.payout_max ?? 0) > 0;
   if (estimate?.status === "completed" && isPipelineResult) {
     const gross = formatRange(estimate.payout_min, estimate.payout_max);
-    const net = formatRange(estimate.net_min, estimate.net_max);
+    // Never show the patient a $0 net: hide the box when nothing survives the
+    // deductions, and soften "$0 – $X" into "Up to $X".
+    const net =
+      (estimate.net_max ?? 0) <= 0
+        ? null
+        : estimate.net_min === 0
+          ? `Up to $${estimate.net_max!.toLocaleString()}`
+          : formatRange(estimate.net_min, estimate.net_max);
     return (
       <div className="card estimate-card estimate-full">
         <span className="estimate-label">
@@ -108,19 +120,32 @@ export function EstimateResultCard({
             <span className="estimate-net-label">Estimated in your pocket</span>
             <span className="estimate-net-range">{net}</span>
             <span className="help-text">
-              After an assumed {estimate.fee_pct_assumed ?? 33.3}% attorney fee, case costs,
-              and estimated medical liens.
+              After our {estimate.fee_pct_assumed ?? 10}% service fee, case costs, and
+              estimated medical liens — no attorney taking a 33–40% cut.
             </span>
           </div>
         )}
         <WarningsList estimate={estimate} />
         <FactorList title="What strengthens your case" items={estimate.drivers} />
-        <FactorList title="What could reduce your estimate" items={estimate.reducers} />
+        {/* During onboarding we haven't asked for documents yet, so missing
+            documentation is framed as upside, not criticism. */}
+        {!firstLook && (
+          <FactorList title="What could reduce your estimate" items={estimate.reducers} />
+        )}
         {estimate.improvements && estimate.improvements.length > 0 && (
           <div className="estimate-improvements">
             <span className="estimate-improvements-title">
-              What would most improve this estimate
+              {firstLook
+                ? "How your estimate improves from here"
+                : "What would most improve this estimate"}
             </span>
+            {firstLook && (
+              <p className="estimate-improvements-lead">
+                We haven&apos;t asked for your documents yet — that happens after you
+                sign up. As we receive these, your case gets stronger and your estimate
+                more precise:
+              </p>
+            )}
             <ul>
               {estimate.improvements.map((item) => (
                 <li key={item}>{item}</li>
@@ -133,9 +158,10 @@ export function EstimateResultCard({
     );
   }
 
-  // Legacy completed rows (pre-pipeline) still carry a payout range.
+  // Legacy completed rows (pre-pipeline) still carry a payout range; zero
+  // ranges fall back to the static template instead of showing "$0 – $0".
   const range =
-    (estimate?.status === "completed"
+    (estimate?.status === "completed" && (estimate.payout_max ?? 0) > 0
       ? formatRange(estimate.payout_min, estimate.payout_max)
       : null) ?? formatRange(fallbackMin, fallbackMax);
   if (!range) return null;

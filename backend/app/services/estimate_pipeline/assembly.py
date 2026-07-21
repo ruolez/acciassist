@@ -430,6 +430,12 @@ def fallback_reducers(x: CanonicalExtraction, limit: int = 3) -> list[str]:
 
 _IMPROVEMENT_CHECKS: list = [
     (
+        lambda x: x.injury.treatment_ladder.highest_reached == "none"
+        or x.injury.time_to_first_treatment == "never",
+        "Seeing a doctor about your injuries — documented treatment is the foundation "
+        "of a claim and unlocks everything else.",
+    ),
+    (
         lambda x: (x.economic.medical_billed_to_date.amount or 0) > 0
         and not x.economic.medical_billed_to_date.documented,
         "Copies of your medical bills or an itemized billing statement.",
@@ -450,8 +456,8 @@ _IMPROVEMENT_CHECKS: list = [
     ),
     (
         lambda x: x.injury.objective_finding.status == "no_imaging",
-        "Imaging (X-ray/MRI) if a doctor orders it — an objective finding is the "
-        "single biggest driver of value.",
+        "Imaging (X-ray/MRI) if a doctor orders it — a documented finding is the "
+        "single biggest driver of case value.",
     ),
     (
         lambda x: x.meta.state is None,

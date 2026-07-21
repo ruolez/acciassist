@@ -392,3 +392,9 @@
 .next-steps strong {
   color: var(--on-surface);
 }
+.estimate-improvements-lead {
+  margin: var(--space-1) 0 var(--space-2);
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.8);
+}

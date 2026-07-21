@@ -311,7 +311,7 @@ async def _run(db: AsyncSession, estimate: CaseEstimate, session_id: uuid.UUID) 
         judgment,
         adversarial,
         comps,
-        fee_pct=float(settings.contingency_fee_pct or 33.3),
+        fee_pct=float(settings.contingency_fee_pct or 10),
     )
     estimate.internals = _merge(estimate.internals, {"assembly_trace": result["trace"]})
     _persist_result(estimate, result)

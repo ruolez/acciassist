@@ -270,6 +270,19 @@ class TestComputeNet:
         assert compute_net(3_000, 40, 5_000, "medicare", 10_000) == 0.0
 
 
+class TestImprovements:
+    def test_untreated_claimant_gets_a_see_a_doctor_recommendation(self):
+        untreated = extraction(
+            injury={"treatment_ladder": {"highest_reached": "none"}},
+        )
+        items = assembly.improvements(untreated)
+        assert any("Seeing a doctor" in item for item in items)
+        treated = extraction(
+            injury={"treatment_ladder": {"highest_reached": "injections"}},
+        )
+        assert not any("Seeing a doctor" in item for item in assembly.improvements(treated))
+
+
 REAR_END_DOCUMENTED = dict(
     meta={"case_type": "motor_vehicle", "state": "CA", "incident_date": "2026-01-15"},
     injury={

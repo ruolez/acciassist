@@ -54,7 +54,7 @@ async def test_configured_completion_runs_full_pipeline(
     assert body["status"] == "completed"
     assert 0 < body["payout_min"] <= body["payout_max"]
     assert 0 <= body["net_min"] <= body["net_max"] < body["payout_max"]
-    assert body["fee_pct_assumed"] == 33.3
+    assert body["fee_pct_assumed"] == 10
     assert body["gated"] is None
     assert any("rear-end" in d.lower() for d in body["drivers"])
     assert body["reducers"] == [

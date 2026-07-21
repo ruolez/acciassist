@@ -49,13 +49,63 @@ describe("EstimateResultCard", () => {
     );
     expect(screen.getByText("$40,000 – $90,000")).toBeInTheDocument();
     expect(screen.getByText("$18,000 – $51,000")).toBeInTheDocument();
-    expect(screen.getByText(/assumed 33.3% attorney fee/)).toBeInTheDocument();
+    expect(screen.getByText(/our 33.3% service fee/)).toBeInTheDocument();
     expect(screen.getByText("You were rear-ended.")).toBeInTheDocument();
     expect(screen.getByText("A treatment gap will be used against you.")).toBeInTheDocument();
     expect(screen.getByText("Copies of your medical bills.")).toBeInTheDocument();
     expect(screen.getByText(/filing deadline is near/)).toBeInTheDocument();
     expect(screen.getByText("This is not legal advice.")).toBeInTheDocument();
     expect(screen.queryByText("Static note.")).not.toBeInTheDocument();
+  });
+
+  it("never shows a $0 net: hides the box or softens to 'Up to'", () => {
+    const { rerender } = render(
+      <EstimateResultCard
+        estimate={completedEstimate({ net_min: 0, net_max: 0 })}
+        calculating={false}
+        {...FALLBACK}
+      />,
+    );
+    expect(screen.queryByText("Estimated in your pocket")).not.toBeInTheDocument();
+    expect(screen.queryByText(/\$0/)).not.toBeInTheDocument();
+
+    rerender(
+      <EstimateResultCard
+        estimate={completedEstimate({ net_min: 0, net_max: 750 })}
+        calculating={false}
+        {...FALLBACK}
+      />,
+    );
+    expect(screen.getByText("Up to $750")).toBeInTheDocument();
+  });
+
+  it("falls back to the static range when the gross itself is zero", () => {
+    render(
+      <EstimateResultCard
+        estimate={completedEstimate({ payout_min: 0, payout_max: 0 })}
+        calculating={false}
+        {...FALLBACK}
+      />,
+    );
+    expect(screen.getByText("$5,000 – $25,000")).toBeInTheDocument();
+    expect(screen.getByText("Static note.")).toBeInTheDocument();
+  });
+
+  it("first-look mode recommends improvements instead of criticizing", () => {
+    render(
+      <EstimateResultCard
+        estimate={completedEstimate()}
+        calculating={false}
+        firstLook
+        {...FALLBACK}
+      />,
+    );
+    expect(
+      screen.queryByText("A treatment gap will be used against you."),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("How your estimate improves from here")).toBeInTheDocument();
+    expect(screen.getByText(/haven't asked for your documents yet/)).toBeInTheDocument();
+    expect(screen.getByText("Copies of your medical bills.")).toBeInTheDocument();
   });
 
   it("renders the gate explanation without any dollar range when gated", () => {

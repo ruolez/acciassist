@@ -166,7 +166,9 @@ export function SettingsPage() {
           comps_enabled: f.comps_enabled,
           comps_model: f.comps_model || null,
           sample_count: Number(f.sample_count) || 5,
-          contingency_fee_pct: Number(f.contingency_fee_pct) || 33.3,
+          // 0 is a legitimate fee — only fall back when the field is blank.
+          contingency_fee_pct:
+            f.contingency_fee_pct.trim() === "" ? 10 : Number(f.contingency_fee_pct),
         },
       }),
     onSuccess: (saved) => {
@@ -464,18 +466,19 @@ export function SettingsPage() {
                 </p>
               </div>
               <div className="field">
-                <label>Assumed contingency fee % (10–50)</label>
+                <label>AcciAssist service fee % (0–50)</label>
                 <input
                   className="input"
                   type="number"
-                  min={10}
+                  min={0}
                   max={50}
                   step={0.1}
                   value={form.contingency_fee_pct}
                   onChange={(e) => set({ contingency_fee_pct: e.target.value })}
                 />
                 <p className="field-hint">
-                  Used for the &quot;estimated in your pocket&quot; figure patients see.
+                  Our fee — not an attorney contingency. Deducted in the &quot;estimated
+                  in your pocket&quot; figure patients see.
                 </p>
               </div>
             </div>

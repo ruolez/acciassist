@@ -23,7 +23,7 @@ async def test_pipeline_settings_roundtrip_and_defaults(admin_client):
     assert initial["comps_enabled"] is False
     assert initial["comps_model"] is None
     assert initial["sample_count"] == 5
-    assert initial["contingency_fee_pct"] == 33.3
+    assert initial["contingency_fee_pct"] == 10
 
     payload = dict(
         AI_PAYLOAD,
@@ -43,7 +43,7 @@ async def test_pipeline_settings_validation(admin_client):
     for bad in (
         {"sample_count": 0},
         {"sample_count": 10},
-        {"contingency_fee_pct": 5},
+        {"contingency_fee_pct": -1},
         {"contingency_fee_pct": 60},
     ):
         resp = await admin_client.put("/api/admin/settings", json=dict(AI_PAYLOAD, **bad))

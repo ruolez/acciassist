@@ -77,6 +77,7 @@ describe(buildReceipt, () => {
     expect(byId.uncertainty.amount).toBe("±18%");
     expect(byId.gross.amount).toBe("$20,000 – $45,000");
     expect(byId.gross.kind).toBe("total");
+    expect(byId.fee.label).toBe("AcciAssist service fee (33.3%)");
     expect(byId.fee.amount).toBe("− 33.3%");
     expect(byId.net.amount).toBe("$9,000 – $24,000");
   });

@@ -157,8 +157,9 @@ export function buildReceipt(estimate: CaseEstimateAdmin): ReceiptRow[] {
     rows.push({
       id: "fee",
       kind: "deduction",
-      label: `Attorney fee (assumed ${result.fee_pct}%)`,
+      label: `AcciAssist service fee (${result.fee_pct}%)`,
       amount: `− ${result.fee_pct}%`,
+      detail: "Instead of an attorney's typical 33–40% contingency cut.",
     });
   }
   if (estimate.case_cost_min != null && estimate.case_cost_max != null) {
