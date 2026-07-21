@@ -46,27 +46,54 @@ const STEPS = [
   {
     n: "02",
     title: "Answer a few questions",
-    body: "Simple questions, one at a time. Most people finish in about three minutes.",
+    body: "Plain-English questions, one at a time. Most people finish in about three minutes.",
   },
   {
     n: "03",
-    title: "See your summary",
-    body: "Get a clear overview of your case and an honest estimate of what it may be worth.",
+    title: "See what your case may be worth",
+    body: "Get a clear summary of your case and an honest, no-pressure estimate of its value.",
   },
 ];
 
 const VALUES = [
   {
     title: "Fully transparent",
-    body: "You see every document we prepare and submit on your behalf — nothing hidden.",
+    body: "You see every document we prepare and submit on your behalf — nothing hidden, nothing buried in fine print.",
   },
   {
     title: "Keep more of your settlement",
-    body: "No greedy cuts. We help you maximize your payout instead of shrinking it.",
+    body: "Personal-injury attorneys typically take a third or more of your payout. We built AcciAssist so more of it stays with you.",
   },
   {
     title: "No upfront cost",
-    body: "Start your assessment for free. We only succeed when you do.",
+    body: "Your assessment is free and there is nothing to buy. We only succeed when you do.",
+  },
+];
+
+const FAQS = [
+  {
+    q: "Is the assessment really free?",
+    a: "Yes. Answering the questions and seeing your summary and estimate costs nothing — no credit card, no obligation, and no pressure to continue afterwards.",
+  },
+  {
+    q: "Do I need to create an account?",
+    a: "No. You can complete the entire assessment anonymously. You only create an account if you decide you want us to work on your case, so you can follow its progress.",
+  },
+  {
+    q: "Is my information private?",
+    a: "Yes. Your answers are confidential and are used only to prepare your summary and estimate. We never sell your information, and you stay anonymous until you choose to leave your contact details.",
+  },
+  {
+    q: "How accurate is the estimate?",
+    a: "It is an honest starting range based on your answers and the rules of your state — not a promise. As you share more detail (medical records, bills, and so on), the estimate gets sharper. It is informational and not legal advice.",
+  },
+  {
+    q: "Do I need a lawyer?",
+    a: "Many injury claims are resolved without one. Our goal is to give you the full picture — what your case may be worth and what usually gets deducted — so you can decide for yourself. You are always free to consult an attorney at any point.",
+  },
+  {
+    q: "What happens after I finish the questions?",
+    a: "You immediately see a plain-English summary of your case and an estimated range. If you'd like help, leave your contact details and our team will review your case and reach out — otherwise, you can simply walk away with the information.",
   },
 ];
 
@@ -92,34 +119,39 @@ export function LandingPage() {
   return (
     <div className="landing">
       <header className="topbar">
-        <Logo size={42} withWordmark to="/" />
-        <nav className="topbar-nav">
-          <span className="topbar-tag">Patient Intake</span>
+        <Logo size={38} withWordmark to="/" />
+        <nav className="topbar-links" aria-label="Page sections">
+          <a href="#how">How it works</a>
+          <a href="#why">Why AcciAssist</a>
+          <a href="#faq">FAQ</a>
+        </nav>
+        <div className="topbar-actions">
           <Link className="topbar-login" to={me ? "/account" : "/login"}>
             {me ? "My case" : "Client login"}
           </Link>
           <button className="btn btn-cta topbar-cta" onClick={scrollToBegin}>
-            Start here
+            Get my estimate
           </button>
-        </nav>
+        </div>
       </header>
 
       {/* ── Hero ── */}
       <section className="hero">
         <div className="hero-copy">
-          <span className="eyebrow">Physical wellness &amp; recovery</span>
+          <span className="eyebrow">Free injury case assessment</span>
           <h1 className="hero-title">
-            Your path to <span className="hero-em">complete wellness</span> starts here
+            Find out what your injury case is <span className="hero-em">really worth</span>
           </h1>
           <p className="hero-sub">
-            Count on our expertise in physical wellness — specialists who help you move
-            better, recover faster, and feel like yourself again.
+            Answer a few plain-English questions about your accident and get an honest
+            estimate of your case&apos;s value — in about three minutes, with no login and
+            no pressure.
           </p>
           <div className="hero-actions">
             <button className="btn btn-cta" onClick={scrollToBegin}>
-              Start here
+              See what my case is worth
             </button>
-            <span className="hero-note">Free, no-obligation assessment</span>
+            <span className="hero-note">Free &amp; confidential — no obligation</span>
           </div>
           <ul className="reassurance">
             {REASSURANCE.map((item) => (
@@ -136,9 +168,9 @@ export function LandingPage() {
           <div className="hero-frame">
             <img src="/hero.png" alt="A clinician caring for two smiling children" />
             <div className="hero-caption">
-              <span className="hero-caption-eyebrow">Trusted care</span>
+              <span className="hero-caption-eyebrow">Patient-first care</span>
               <span className="hero-caption-text">
-                Compassionate, expert physical wellness
+                Support through your recovery — nothing hidden
               </span>
             </div>
           </div>
@@ -146,7 +178,7 @@ export function LandingPage() {
       </section>
 
       {/* ── How it works ── */}
-      <section className="how">
+      <section className="how" id="how">
         <div className="section-head">
           <span className="eyebrow">How it works</span>
           <h2>From uncertain to confident, in minutes</h2>
@@ -166,7 +198,7 @@ export function LandingPage() {
       </section>
 
       {/* ── Why us / values ── */}
-      <section className="values">
+      <section className="values" id="why">
         <div className="values-inner">
           <div className="section-head">
             <span className="eyebrow eyebrow-light">Why AcciAssist</span>
@@ -183,6 +215,21 @@ export function LandingPage() {
                 <p>{v.body}</p>
               </div>
             ))}
+          </div>
+          <div className="compare" role="group" aria-label="Typical attorney fees compared with AcciAssist">
+            <div className="compare-col">
+              <span className="compare-label">With a typical attorney</span>
+              <span className="compare-big">33–40%</span>
+              <p>of your settlement usually goes to contingency fees — before case costs.</p>
+            </div>
+            <span className="compare-divider" aria-hidden="true">
+              vs
+            </span>
+            <div className="compare-col compare-accent">
+              <span className="compare-label">With AcciAssist</span>
+              <span className="compare-big">Every dollar</span>
+              <p>is accounted for — you see exactly what you&apos;d keep, and why.</p>
+            </div>
           </div>
         </div>
       </section>
@@ -229,16 +276,54 @@ export function LandingPage() {
         </div>
       </section>
 
+      {/* ── FAQ ── */}
+      <section className="faq" id="faq">
+        <div className="section-head">
+          <span className="eyebrow">Common questions</span>
+          <h2>Questions, answered honestly</h2>
+        </div>
+        <div className="faq-list">
+          {FAQS.map((f) => (
+            <details key={f.q} className="faq-item">
+              <summary>{f.q}</summary>
+              <p>{f.a}</p>
+            </details>
+          ))}
+        </div>
+      </section>
+
       <footer className="landing-foot">
-        <Logo size={28} withWordmark to="/" />
-        <span className="muted">
-          Transparent, patient-first care. Your information stays private.
-        </span>
-        <nav className="foot-links">
-          <Link to={me ? "/account" : "/login"}>
-            {me ? "My case" : "Client login"}
-          </Link>
-        </nav>
+        <div className="foot-main">
+          <div className="foot-brand">
+            <Logo size={30} withWordmark to="/" />
+            <p className="muted">
+              An honest, transparent way to understand your injury case — and keep more of
+              what&apos;s yours.
+            </p>
+          </div>
+          <nav className="foot-col" aria-label="Explore">
+            <span className="foot-head">Explore</span>
+            <a href="#how">How it works</a>
+            <a href="#why">Why AcciAssist</a>
+            <a href="#faq">FAQ</a>
+            <a href="#begin">Start my assessment</a>
+          </nav>
+          <nav className="foot-col" aria-label="Account">
+            <span className="foot-head">Account</span>
+            <Link to={me ? "/account" : "/login"}>{me ? "My case" : "Client login"}</Link>
+          </nav>
+          <nav className="foot-col" aria-label="Legal">
+            <span className="foot-head">Legal</span>
+            <Link to="/privacy">Privacy policy</Link>
+            <Link to="/terms">Terms of use</Link>
+          </nav>
+        </div>
+        <p className="foot-disclaimer">
+          AcciAssist provides informational estimates based on the details you share.
+          AcciAssist is not a law firm and does not provide legal advice; an estimate is not
+          a promise or guarantee of any settlement or outcome.
+        </p>
+        <p className="foot-copy">© 2026 AcciAssist. All rights reserved. Your information stays private.</p>
       </footer>
     </div>
   );

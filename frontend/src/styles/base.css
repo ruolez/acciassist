@@ -10,6 +10,12 @@ body,
   height: 100%;
 }
 
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
 body {
   margin: 0;
   font-family: var(--font-body);
@@ -53,6 +59,16 @@ h3 {
 .btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+.btn {
+  white-space: nowrap;
+}
+.btn:focus-visible,
+a:focus-visible,
+button:focus-visible,
+summary:focus-visible {
+  outline: 3px solid var(--primary);
+  outline-offset: 2px;
 }
 .btn-primary {
   background: var(--primary);

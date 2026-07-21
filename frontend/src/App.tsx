@@ -22,6 +22,7 @@ import { SummaryTemplatePage } from "./features/admin/SummaryTemplatePage";
 import { IntakeWizard } from "./features/intake/IntakeWizard";
 import { LandingPage } from "./features/intake/LandingPage";
 import { SummaryPage } from "./features/intake/SummaryPage";
+import { PrivacyPage, TermsPage } from "./features/legal/LegalPages";
 
 export function App() {
   return (
@@ -30,6 +31,8 @@ export function App() {
       <Route path="/" element={<LandingPage />} />
       <Route path="/intake/:injuryTypeId" element={<IntakeWizard />} />
       <Route path="/intake/session/:sessionId/summary" element={<SummaryPage />} />
+      <Route path="/privacy" element={<PrivacyPage />} />
+      <Route path="/terms" element={<TermsPage />} />
 
       {/* Client accounts */}
       <Route path="/login" element={<UserLogin />} />
