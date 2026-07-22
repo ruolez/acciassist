@@ -325,6 +325,7 @@ class User(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     claimed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     cases: Mapped[list["Case"]] = relationship(
         back_populates="user", order_by="Case.created_at.desc()"

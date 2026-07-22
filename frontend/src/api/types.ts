@@ -82,6 +82,18 @@ export type Admin = {
   created_at: string;
 };
 
+export type AdminClient = {
+  id: number;
+  email: string;
+  name: string;
+  phone: string | null;
+  claimed: boolean;
+  created_at: string;
+  claimed_at: string | null;
+  last_login_at: string | null;
+  case_count: number;
+};
+
 export type Lead = {
   id: number;
   intake_session_id: string | null;

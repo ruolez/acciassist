@@ -446,6 +446,19 @@ class EmailLogOut(ORMModel):
     created_at: datetime
 
 
+# ── Admin clients ──────────────────────────────────────────────────────
+class AdminClientOut(ORMModel):
+    id: int
+    email: EmailStr
+    name: str
+    phone: str | None
+    claimed: bool
+    created_at: datetime
+    claimed_at: datetime | None
+    last_login_at: datetime | None
+    case_count: int
+
+
 # ── User auth ──────────────────────────────────────────────────────────
 class UserOut(ORMModel):
     id: int

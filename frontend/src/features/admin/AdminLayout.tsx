@@ -89,7 +89,10 @@ const NAV_SECTIONS: {
   },
   {
     label: "Clients",
-    items: [{ to: "/admin/cases", label: "Cases", icon: "briefcase" }],
+    items: [
+      { to: "/admin/cases", label: "Cases", icon: "briefcase" },
+      { to: "/admin/clients", label: "Clients", icon: "users" },
+    ],
   },
   {
     label: "Configuration",

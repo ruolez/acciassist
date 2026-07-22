@@ -108,6 +108,17 @@ async def notify_case_update(case_id: int) -> None:
     await _notify_case(case_id, "case_update")
 
 
+async def notify_account_deleted(email: str, name: str) -> None:
+    """Takes the address and name as plain values — the user row is already
+    gone by the time this background task runs."""
+    factory = email_service.get_session_factory()
+    async with factory() as db:
+        subject, html, text = email_templates.account_deleted(name)
+        await send_email(
+            db, to=email, subject=subject, html=html, text=text, purpose="account_deleted"
+        )
+
+
 async def send_password_reset(user_id: int, raw_token: str) -> None:
     factory = email_service.get_session_factory()
     async with factory() as db:

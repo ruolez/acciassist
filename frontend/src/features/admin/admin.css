@@ -436,6 +436,22 @@
   justify-content: flex-end;
   padding: 0 var(--space-4) var(--space-4);
 }
+.client-identity {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+.client-identity .muted {
+  font-size: 0.85rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.client-cases,
+.client-login {
+  white-space: nowrap;
+  font-size: 0.85rem;
+}
 .danger-zone {
   padding: var(--space-5);
   margin-top: var(--space-5);

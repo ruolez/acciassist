@@ -169,6 +169,29 @@ def case_update_posted(name: str, dashboard_url: str) -> tuple[str, str, str]:
     return subject, _layout("New update on your case", body), text
 
 
+def account_deleted(name: str) -> tuple[str, str, str]:
+    subject = "Your AcciAssist account has been deleted"
+    body = (
+        _paragraph(f"Hi {escape(name)},")
+        + _paragraph(
+            "Your AcciAssist account and the case information associated with it "
+            "have been deleted, and you will no longer receive updates from us."
+        )
+        + _paragraph(
+            "If you believe this was a mistake or you have any questions, simply "
+            "reply to this email and we'll help you out."
+        )
+    )
+    text = (
+        f"Hi {name},\n\n"
+        "Your AcciAssist account and the case information associated with it have "
+        "been deleted, and you will no longer receive updates from us.\n\n"
+        "If you believe this was a mistake or you have any questions, simply reply "
+        "to this email and we'll help you out.\n"
+    )
+    return subject, _layout("Your account has been deleted", body), text
+
+
 def test_email() -> tuple[str, str, str]:
     subject = "AcciAssist SMTP test"
     body = _paragraph(

@@ -26,6 +26,7 @@ from app.schemas import (
     CaseStageIn,
     CaseUpdateIn,
 )
+from app.services.case_purge import purge_case
 from app.services.documents import delete_stored_file, document_path
 from app.services.leads import issue_token
 from app.services.notifications import (
@@ -208,18 +209,8 @@ async def delete_case(case_id: int, db: DbSession) -> None:
     )
     if case is None:
         raise AppError(404, "not_found", "Case not found")
-    docs = list(case.documents)
-    lead = case.lead
-    session_id = lead.intake_session_id
-    await db.delete(case)
-    await db.delete(lead)
-    if session_id is not None:
-        intake = await db.get(IntakeSession, session_id)
-        if intake is not None:
-            await db.delete(intake)
+    docs = await purge_case(db, case)
     await db.commit()
-    # Unlink after commit: a crash here leaves only harmless orphan files,
-    # never live rows pointing at deleted files.
     for doc in docs:
         delete_stored_file(doc)
 

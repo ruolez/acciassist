@@ -17,6 +17,7 @@ import { AdminLogin } from "./features/admin/AdminLogin";
 import { AdminsPage } from "./features/admin/AdminsPage";
 import { CaseDetailAdminPage } from "./features/admin/CaseDetailAdminPage";
 import { CasesPage } from "./features/admin/CasesPage";
+import { ClientsPage } from "./features/admin/ClientsPage";
 import { InjuryTypesPage } from "./features/admin/InjuryTypesPage";
 import { JurisdictionRulesPage } from "./features/admin/JurisdictionRulesPage";
 import { QuestionnaireBuilder } from "./features/admin/QuestionnaireBuilder";
@@ -64,6 +65,7 @@ export function App() {
         <Route path="submissions" element={<SubmissionsPage />} />
         <Route path="cases" element={<CasesPage />} />
         <Route path="cases/:caseId" element={<CaseDetailAdminPage />} />
+        <Route path="clients" element={<ClientsPage />} />
         <Route path="jurisdictions" element={<JurisdictionRulesPage />} />
         <Route path="admins" element={<AdminsPage />} />
         <Route path="settings" element={<SettingsPage />} />

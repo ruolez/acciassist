@@ -73,6 +73,7 @@ async def claim_account(data: ClaimIn, response: Response, db: DbSession) -> Use
     now = datetime.now(UTC)
     user.password_hash = hash_password(data.password)
     user.claimed_at = now
+    user.last_login_at = now
     token.used_at = now
     await db.commit()
     _set_auth_cookie(response, user.id)
@@ -110,6 +111,8 @@ async def login(data: LoginIn, response: Response, db: DbSession) -> User:
     )
     if not valid:
         raise AppError(401, "invalid_credentials", "Invalid email or password")
+    user.last_login_at = datetime.now(UTC)
+    await db.commit()
     _set_auth_cookie(response, user.id)
     return user
 

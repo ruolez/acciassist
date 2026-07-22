@@ -6,6 +6,7 @@ from app.api import (
     admin_ai,
     admin_auth,
     admin_cases,
+    admin_clients,
     admin_content,
     admin_jurisdictions,
     admin_settings,
@@ -72,6 +73,9 @@ app.include_router(
 )
 app.include_router(
     admin_cases.router, prefix="/api/admin", tags=["admin-cases"], dependencies=_admin_auth
+)
+app.include_router(
+    admin_clients.router, prefix="/api/admin", tags=["admin-clients"], dependencies=_admin_auth
 )
 app.include_router(
     admin_ai.router, prefix="/api/admin/ai", tags=["admin-ai"], dependencies=_admin_auth
