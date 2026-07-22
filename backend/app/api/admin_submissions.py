@@ -81,6 +81,21 @@ async def get_session(session_id: uuid.UUID, db: DbSession) -> IntakeSessionDeta
     )
 
 
+@router.delete("/intake-sessions/{session_id}", status_code=204)
+async def delete_session(session_id: uuid.UUID, db: DbSession) -> None:
+    """Hard-delete an intake session, its answers (ORM cascade) and estimate
+    (DB CASCADE). A referencing lead survives with intake_session_id = NULL."""
+    session = await db.scalar(
+        select(IntakeSession)
+        .where(IntakeSession.id == session_id)
+        .options(selectinload(IntakeSession.answers))
+    )
+    if session is None:
+        raise AppError(404, "not_found", "Intake session not found")
+    await db.delete(session)
+    await db.commit()
+
+
 @router.get("/leads", response_model=list[LeadOut])
 async def list_leads(db: DbSession) -> list[Lead]:
     rows = await db.scalars(select(Lead).order_by(Lead.created_at.desc()))

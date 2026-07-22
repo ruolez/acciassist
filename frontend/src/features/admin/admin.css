@@ -431,6 +431,26 @@
   display: flex;
   gap: var(--space-3);
 }
+.submission-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 var(--space-4) var(--space-4);
+}
+.danger-zone {
+  padding: var(--space-5);
+  margin-top: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  align-items: flex-start;
+}
+.danger-zone h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+.danger-zone p {
+  margin: 0;
+}
 .lead-row {
   display: flex;
   align-items: center;

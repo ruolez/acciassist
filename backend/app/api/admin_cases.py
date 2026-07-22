@@ -26,7 +26,7 @@ from app.schemas import (
     CaseStageIn,
     CaseUpdateIn,
 )
-from app.services.documents import document_path
+from app.services.documents import delete_stored_file, document_path
 from app.services.leads import issue_token
 from app.services.notifications import (
     notify_case_update,
@@ -189,6 +189,39 @@ async def case_documents(case_id: int, db: DbSession) -> list[CaseDocument]:
         .order_by(CaseDocument.created_at.desc())
     )
     return list(rows)
+
+
+@router.delete("/cases/{case_id}", status_code=204)
+async def delete_case(case_id: int, db: DbSession) -> None:
+    """Hard-delete a case and everything attached: documents (rows + stored
+    files), updates, the lead, and the lead's intake session with answers and
+    estimate. The User row is kept (unique email; may be claimed or own other
+    cases). email_log.case_id nulls out via FK."""
+    case = await db.scalar(
+        select(Case)
+        .where(Case.id == case_id)
+        .options(
+            selectinload(Case.lead),
+            selectinload(Case.documents),
+            selectinload(Case.updates),
+        )
+    )
+    if case is None:
+        raise AppError(404, "not_found", "Case not found")
+    docs = list(case.documents)
+    lead = case.lead
+    session_id = lead.intake_session_id
+    await db.delete(case)
+    await db.delete(lead)
+    if session_id is not None:
+        intake = await db.get(IntakeSession, session_id)
+        if intake is not None:
+            await db.delete(intake)
+    await db.commit()
+    # Unlink after commit: a crash here leaves only harmless orphan files,
+    # never live rows pointing at deleted files.
+    for doc in docs:
+        delete_stored_file(doc)
 
 
 @router.get("/cases/{case_id}/documents/{doc_id}/download")

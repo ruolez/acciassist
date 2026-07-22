@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { api } from "../../api/client";
 import type {
@@ -106,6 +106,7 @@ function EstimateGapCard({
 
 export function CaseDetailAdminPage() {
   const { caseId } = useParams();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [updateBody, setUpdateBody] = useState("");
   const { error, onError, clear } = useActionError();
@@ -148,6 +149,20 @@ export function CaseDetailAdminPage() {
     mutationFn: () => api(`/admin/cases/${caseId}/resend-invite`, { method: "POST" }),
     onSuccess: clear,
     onError: (e) => onError(e, "Could not resend the invite"),
+  });
+
+  const deleteCase = useMutation({
+    mutationFn: () => api(`/admin/cases/${caseId}`, { method: "DELETE" }),
+    onSuccess: () => {
+      // Remove this case's queries before the non-exact invalidate below,
+      // which matches KEY as a prefix — otherwise the detail refetches into a 404.
+      queryClient.removeQueries({ queryKey: KEY });
+      queryClient.removeQueries({ queryKey: ["admin", "cases", caseId, "documents"] });
+      navigate("/admin/cases");
+      queryClient.invalidateQueries({ queryKey: ["admin", "cases"], exact: false });
+      queryClient.invalidateQueries({ queryKey: ["admin", "sessions"] });
+    },
+    onError: (e) => onError(e, "Could not delete the case"),
   });
 
   if (isLoading) return <div className="page muted">Loading…</div>;
@@ -285,6 +300,28 @@ export function CaseDetailAdminPage() {
           ))}
         </div>
       )}
+
+      <div className="card danger-zone">
+        <h2>Delete this case</h2>
+        <p className="muted">
+          Permanently removes the case, its documents and stored files, all updates, the
+          lead, and the intake submission. This cannot be undone.
+        </p>
+        <button
+          className="btn btn-danger"
+          disabled={deleteCase.isPending}
+          onClick={() => {
+            if (
+              confirm(
+                `Delete case #${data.id} (${data.lead_name}) and all related data? This cannot be undone.`,
+              )
+            )
+              deleteCase.mutate();
+          }}
+        >
+          Delete case
+        </button>
+      </div>
     </div>
   );
 }

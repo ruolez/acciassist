@@ -1,10 +1,11 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { api } from "../../api/client";
 import type { IntakeSessionDetail, IntakeSessionSummary } from "../../api/types";
 import { EmptyState } from "../../components/EmptyState";
 import { humanize, relativeTime } from "../../lib/format";
+import { useActionError } from "./useActionError";
 import { usePageTitle } from "../../lib/usePageTitle";
 import "./admin.css";
 
@@ -67,9 +68,24 @@ export function SubmissionsPage() {
   usePageTitle("Submissions");
   const [open, setOpen] = useState<string | null>(null);
   const [filter, setFilter] = useState<StatusFilter>("all");
+  const queryClient = useQueryClient();
+  const { error, onError, clear } = useActionError();
   const { data, isLoading } = useQuery({
     queryKey: ["admin", "sessions"],
     queryFn: () => api<IntakeSessionSummary[]>("/admin/intake-sessions"),
+  });
+
+  const remove = useMutation({
+    mutationFn: (id: string) => api(`/admin/intake-sessions/${id}`, { method: "DELETE" }),
+    onSuccess: (_data, id) => {
+      clear();
+      setOpen(null);
+      queryClient.removeQueries({ queryKey: ["admin", "session", id] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "sessions"] });
+      // A linked case just lost its intake answers and estimate.
+      queryClient.invalidateQueries({ queryKey: ["admin", "cases"], exact: false });
+    },
+    onError: (e) => onError(e, "Could not delete the submission"),
   });
 
   const visible = (data ?? []).filter((s) => filter === "all" || s.status === filter);
@@ -95,6 +111,7 @@ export function SubmissionsPage() {
         ))}
       </div>
 
+      {error && <p className="error-text">{error}</p>}
       {isLoading && <p className="muted">Loading…</p>}
       {data && visible.length === 0 && (
         <EmptyState
@@ -120,7 +137,29 @@ export function SubmissionsPage() {
               </span>
               <span className="sub-chevron">{open === s.id ? "▾" : "▸"}</span>
             </button>
-            {open === s.id && <SubmissionDetail sessionId={s.id} />}
+            {open === s.id && (
+              <>
+                <SubmissionDetail sessionId={s.id} />
+                <div className="submission-actions">
+                  <button
+                    className="btn btn-danger"
+                    disabled={remove.isPending}
+                    onClick={() => {
+                      if (
+                        confirm(
+                          s.lead_name
+                            ? `Delete this submission? The lead "${s.lead_name}" (and any case) is kept but loses its intake answers and estimate.`
+                            : "Delete this submission, its answers, and its estimate?",
+                        )
+                      )
+                        remove.mutate(s.id);
+                    }}
+                  >
+                    Delete submission
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         ))}
       </div>
