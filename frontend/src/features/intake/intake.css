@@ -359,6 +359,10 @@
   line-height: 1.5;
   color: rgba(255, 255, 255, 0.55);
 }
+.estimate-footnote {
+  font-style: italic;
+  color: rgba(255, 255, 255, 0.65);
+}
 .estimate-gated-title {
   margin: 0;
   font-family: var(--font-display);

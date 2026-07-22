@@ -23,6 +23,17 @@ TIER_MULTIPLIERS: dict[int, tuple[float, float]] = {
     5: (5.0, 8.0),
 }
 UNDOCUMENTED_MEDICAL_WEIGHT = 0.5
+# Typical billed medical by treatment level, assumed ONLY when the intake
+# captured no medical-bill amount but treatment clearly happened. Weighted
+# like undocumented bills and disclosed to the patient as a footnote.
+ASSUMED_MEDICAL_BY_TREATMENT: dict[str, float] = {
+    "er_only": 3000.0,
+    "conservative_care": 6000.0,
+    "pain_management": 12000.0,
+    "injections": 20000.0,
+    "surgery_recommended_written": 30000.0,
+    "surgery_performed": 75000.0,
+}
 FUTURE_CARE_WEIGHT_IN_WRITING = 1.0
 FUTURE_CARE_WEIGHT_CLAIMED = 0.3
 # (employment group, documented) -> weight; cash wages are excluded entirely.
@@ -139,6 +150,9 @@ class Specials:
     weighted_wages: float
     weighted_out_of_pocket: float
     documented_medical: float
+    # Non-zero when no bill amount was captured and a typical amount for the
+    # treatment level was assumed instead (disclosed via result footnote).
+    assumed_medical: float = 0.0
     flags: list[str] = field(default_factory=list)
 
     @property
@@ -163,6 +177,14 @@ def weight_specials(x: CanonicalExtraction) -> Specials:
     weighted_medical = medical * (
         1.0 if econ.medical_billed_to_date.documented else UNDOCUMENTED_MEDICAL_WEIGHT
     )
+    assumed_medical = 0.0
+    if medical == 0:
+        ladder = x.injury.treatment_ladder.highest_reached
+        if ladder in ASSUMED_MEDICAL_BY_TREATMENT:
+            assumed_medical = ASSUMED_MEDICAL_BY_TREATMENT[ladder]
+        elif x.injury.time_to_first_treatment is not None:
+            assumed_medical = ASSUMED_MEDICAL_BY_TREATMENT["er_only"]
+        weighted_medical = assumed_medical * UNDOCUMENTED_MEDICAL_WEIGHT
 
     future = econ.future_medical.amount or 0.0
     in_writing = (
@@ -198,6 +220,7 @@ def weight_specials(x: CanonicalExtraction) -> Specials:
         weighted_wages=weighted_wages,
         weighted_out_of_pocket=weighted_oop,
         documented_medical=medical if econ.medical_billed_to_date.documented else 0.0,
+        assumed_medical=assumed_medical,
         flags=flags,
     )
 
@@ -545,6 +568,7 @@ def assemble(
         "weighted_wages": specials.weighted_wages,
         "weighted_out_of_pocket": specials.weighted_out_of_pocket,
         "documented_medical": specials.documented_medical,
+        "assumed_medical": specials.assumed_medical,
         "total": specials.total,
         "flags": specials.flags,
     }
@@ -615,6 +639,14 @@ def assemble(
         f"±{width:.0%}."
     )
 
+    footnotes = []
+    if specials.assumed_medical > 0:
+        footnotes.append(
+            f"* No medical bill amounts were provided, so this estimate assumes roughly "
+            f"${specials.assumed_medical:,.0f} in medical bills — typical for the "
+            "treatment described. Actual bills can move this range substantially."
+        )
+
     return {
         "gated": None,
         "gross_min": gross_min,
@@ -631,6 +663,7 @@ def assemble(
         "reducers": reducers,
         "improvements": improvements(x),
         "warnings": [_warning_dict(w) for w in warnings],
+        "footnotes": footnotes,
         "disclaimer": _disclaimer(rule),
         "trace": trace,
     }

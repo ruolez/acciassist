@@ -315,6 +315,59 @@ class TestSchemaRepair:
         assert sum(1 for c in d.calls if c["schema_name"] == "case_extraction") == 2
 
 
+class TestAssumedMedicalBills:
+    """No medical-bill amount captured → assume a treatment-typical amount,
+    weighted like undocumented bills, and disclose it as a footnote."""
+
+    @staticmethod
+    def _without_bills() -> dict:
+        from copy import deepcopy
+
+        data = deepcopy(EXTRACTION_REAR_END_CA)
+        data["economic"].pop("medical_billed_to_date")
+        return data
+
+    def test_missing_bills_assume_treatment_typical_amount(self):
+        from app.services.estimate_pipeline.assembly import (
+            ASSUMED_MEDICAL_BY_TREATMENT,
+            UNDOCUMENTED_MEDICAL_WEIGHT,
+            weight_specials,
+        )
+        from app.services.estimate_pipeline.canonical import CanonicalExtraction
+
+        specials = weight_specials(CanonicalExtraction.model_validate(self._without_bills()))
+        expected = ASSUMED_MEDICAL_BY_TREATMENT["injections"]
+        assert specials.assumed_medical == expected
+        assert specials.weighted_medical == expected * UNDOCUMENTED_MEDICAL_WEIGHT
+
+    def test_claimed_bills_disable_assumption(self):
+        from app.services.estimate_pipeline.assembly import weight_specials
+        from app.services.estimate_pipeline.canonical import CanonicalExtraction
+
+        specials = weight_specials(CanonicalExtraction.model_validate(EXTRACTION_REAR_END_CA))
+        assert specials.assumed_medical == 0.0
+
+    def test_no_treatment_assumes_nothing(self):
+        from app.services.estimate_pipeline.assembly import weight_specials
+        from app.services.estimate_pipeline.canonical import CanonicalExtraction
+
+        data = self._without_bills()
+        data["injury"]["treatment_ladder"] = {"highest_reached": "none"}
+        specials = weight_specials(CanonicalExtraction.model_validate(data))
+        assert specials.assumed_medical == 0.0
+        assert specials.weighted_medical == 0.0
+
+    async def test_footnote_discloses_the_assumption(
+        self, admin_client, session_factory, install
+    ):
+        d = install(PipelineDispatcher(self._without_bills()))
+        public, admin = await _run(admin_client, session_factory, d)
+        assert public["status"] == "completed"
+        assert public["payout_max"] > 0
+        assert any("assumes roughly $20,000" in n for n in public["footnotes"])
+        assert admin["internals"]["assembly_trace"]["specials"]["assumed_medical"] == 20000.0
+
+
 class TestParseExtractionFactlessGuard:
     FACTLESS = '{"meta": {"state": null}, "economic": {}}'
 

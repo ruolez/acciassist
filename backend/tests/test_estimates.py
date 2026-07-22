@@ -13,7 +13,7 @@ from tests.fixtures_estimates import (
 
 PUBLIC_KEYS = {
     "status", "payout_min", "payout_max", "net_min", "net_max", "fee_pct_assumed",
-    "drivers", "reducers", "improvements", "warnings", "gated", "disclaimer",
+    "drivers", "reducers", "improvements", "warnings", "gated", "footnotes", "disclaimer",
 }
 
 

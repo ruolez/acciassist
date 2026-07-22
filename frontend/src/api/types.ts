@@ -121,6 +121,7 @@ export type PublicEstimate = {
   improvements: string[] | null;
   warnings: EstimateWarning[] | null;
   gated: EstimateGate | null;
+  footnotes?: string[] | null;
   disclaimer: string | null;
 };
 
@@ -154,6 +155,7 @@ export type EstimateResult = {
   reducers: string[];
   improvements: string[];
   warnings: EstimateWarning[];
+  footnotes?: string[];
   disclaimer: string;
 };
 

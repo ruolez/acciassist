@@ -228,6 +228,7 @@ class PublicEstimateOut(BaseModel):
     improvements: list[str] | None = None
     warnings: list[PublicWarning] | None = None
     gated: PublicGate | None = None
+    footnotes: list[str] | None = None
     disclaimer: str | None = None
 
 

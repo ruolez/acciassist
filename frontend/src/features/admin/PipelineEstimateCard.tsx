@@ -310,6 +310,11 @@ function CompletedDetail({ data }: { data: CaseEstimateAdmin }) {
                 </ul>
               </>
             )}
+            {result.footnotes?.map((note) => (
+              <p key={note} className="muted">
+                {note}
+              </p>
+            ))}
             {result.disclaimer && <p className="muted">{result.disclaimer}</p>}
           </div>
         </details>

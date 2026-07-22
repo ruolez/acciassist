@@ -153,6 +153,11 @@ export function EstimateResultCard({
             </ul>
           </div>
         )}
+        {estimate.footnotes?.map((note) => (
+          <p key={note} className="estimate-disclaimer estimate-footnote">
+            {note}
+          </p>
+        ))}
         {estimate.disclaimer && <p className="estimate-disclaimer">{estimate.disclaimer}</p>}
       </div>
     );

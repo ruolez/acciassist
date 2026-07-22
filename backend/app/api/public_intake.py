@@ -297,6 +297,7 @@ def _public_estimate(estimate: CaseEstimate) -> PublicEstimateOut:
         improvements=r.get("improvements"),
         warnings=warnings or None,
         gated=gated if isinstance(gated, dict) else None,
+        footnotes=r.get("footnotes") or None,
         disclaimer=r.get("disclaimer"),
     )
 
