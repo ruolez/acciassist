@@ -131,7 +131,6 @@ async def run_extraction(
             referer=referer,
             temperature=0.0,
             timeout=EXTRACTION_TIMEOUT,
-            exclude_reasoning=True,
         )
 
     return await call_with_schema_repair(

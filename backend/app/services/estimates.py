@@ -489,7 +489,6 @@ async def generate_advice(
             json_schema=ADVICE_JSON_SCHEMA,
             schema_name=ADVICE_SCHEMA_NAME,
             referer=app_settings.app_base_url,
-            exclude_reasoning=True,
         )
     except OpenRouterError as exc:
         raise AppError(502, exc.code, exc.message) from exc

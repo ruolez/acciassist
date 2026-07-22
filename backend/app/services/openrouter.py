@@ -167,7 +167,6 @@ async def chat_completion(
     timeout: float = _COMPLETION_TIMEOUT,
     require_parameters: bool = True,
     return_annotations: bool = False,
-    exclude_reasoning: bool = False,
 ) -> str | tuple[str, list]:
     """Run one non-streaming completion and return the assistant content.
 
@@ -180,12 +179,12 @@ async def chat_completion(
     annotations)`` where annotations are OpenRouter web-citation entries.
     """
     headers = _headers(api_key, referer)
+    # NOTE: no `reasoning` parameter here on purpose — with require_parameters
+    # routing it excludes every provider that doesn't support it (e.g. all of
+    # gpt-4o's), and the resulting no-endpoints error used to get misread as a
+    # schema rejection, silently dropping response_format. Reasoning traces are
+    # already ignored: content-side <think> stripping + the separate field.
     body: dict = {"model": model, "messages": messages}
-    if exclude_reasoning:
-        # Reasoning models still think internally, but the trace is dropped
-        # server-side instead of being shipped back (and risking leaking into
-        # content on providers that inline it).
-        body["reasoning"] = {"exclude": True}
     if temperature is not None:
         body["temperature"] = temperature
     if plugins is not None:
@@ -203,19 +202,25 @@ async def chat_completion(
     async with httpx.AsyncClient(timeout=timeout) as client:
         resp = await _post_completion(client, headers, body)
         if (
-            resp.status_code in (400, 404, 422)
-            and "reasoning" in body
-            and "reasoning" in resp.text.lower()
-        ):
-            body.pop("reasoning")
-            resp = await _post_completion(client, headers, body)
-        if (
             resp.status_code != 200
             and json_schema is not None
             and _structured_output_rejected(resp.status_code, resp.text)
         ):
             body.pop("response_format")
             body.pop("provider", None)
+            # The schema traveled only inside response_format; without it the
+            # model would invent its own shape. Restate it in the prompt.
+            body["messages"] = [
+                *messages,
+                {
+                    "role": "user",
+                    "content": (
+                        "Respond with ONLY a JSON object that matches this JSON "
+                        "schema exactly, using exactly its field names:\n"
+                        + json.dumps(json_schema)
+                    ),
+                },
+            ]
             resp = await _post_completion(client, headers, body)
     if resp.status_code != 200:
         raise _error_from_status(resp.status_code, resp.text)

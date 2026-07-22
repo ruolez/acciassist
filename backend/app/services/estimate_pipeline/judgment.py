@@ -113,7 +113,6 @@ async def sample_once(
         referer=referer,
         temperature=JUDGMENT_TEMPERATURE,
         timeout=JUDGMENT_TIMEOUT,
-        exclude_reasoning=True,
     )
     return parse_judgment(content)
 

@@ -135,6 +135,11 @@ async def test_chat_completion_retries_without_rejected_schema(monkeypatch):
     assert "response_format" in fake.requests[0][2]
     assert "response_format" not in fake.requests[1][2]
     assert "provider" not in fake.requests[1][2]
+    # Without response_format the schema must be restated in the prompt, or
+    # the model would invent its own field names.
+    retry_messages = fake.requests[1][2]["messages"]
+    assert "JSON schema" in retry_messages[-1]["content"]
+    assert '"type": "object"' in retry_messages[-1]["content"]
 
 
 async def test_chat_completion_retries_when_no_provider_supports_parameters(monkeypatch):
@@ -151,6 +156,7 @@ async def test_chat_completion_retries_when_no_provider_supports_parameters(monk
     )
     assert content == "plain text"
     assert "provider" not in fake.requests[1][2]
+    assert "JSON schema" in fake.requests[1][2]["messages"][-1]["content"]
 
 
 async def test_chat_completion_sampling_params_sent_only_when_set(monkeypatch):

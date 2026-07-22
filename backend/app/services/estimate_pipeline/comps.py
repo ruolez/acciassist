@@ -169,6 +169,5 @@ async def run_comps(
         # schema is still requested but routing stays permissive.
         require_parameters=False,
         return_annotations=True,
-        exclude_reasoning=True,
     )
     return parse_comps(content, annotations)

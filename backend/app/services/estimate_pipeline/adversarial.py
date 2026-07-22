@@ -149,7 +149,6 @@ async def run_adversarial(
             referer=referer,
             temperature=ADVERSARIAL_TEMPERATURE,
             timeout=ADVERSARIAL_HTTP_TIMEOUT,
-            exclude_reasoning=True,
         )
 
     return await call_with_schema_repair(
